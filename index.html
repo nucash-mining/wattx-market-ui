@@ -3,276 +3,224 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WATTx Grid — NFT Market</title>
+<title>WATTx NFT Marketplace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
 <style>
   :root{
-    --void:#05060a; --grid:#0a1030; --panel:#0c1226e6;
-    --volt:#ffd400; --volt-dim:#b39600; --arc:#2e6bff; --arc-soft:#2e6bff33;
-    --wire:#1a2550; --ink:#eaf0ff; --ghost:#7d8cc0; --live:#38e08a; --hot:#ff5470;
+    --bg:#070912; --bg2:#0c1020; --card:#111629; --card-h:#161d38;
+    --line:#1f2740; --line2:#2c375c;
+    --volt:#ffd400; --volt-dim:#c9a800; --arc:#3d7bff; --arc-soft:#3d7bff22;
+    --ink:#eef2ff; --ghost:#8b97c4; --faint:#5a6690; --live:#3ee089; --hot:#ff5f7a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:var(--void);color:var(--ink);
-    font-family:'Chakra Petch',system-ui,sans-serif;overflow:hidden}
-  canvas#grid{position:fixed;inset:0;z-index:0;display:block}
+  body{background:
+      radial-gradient(1200px 600px at 80% -10%, #10193a55, transparent),
+      radial-gradient(900px 500px at 0% 0%, #1a140033, transparent), var(--bg);
+    color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
   .mono{font-family:'JetBrains Mono',monospace}
+  .display{font-family:'Chakra Petch',sans-serif}
+  button{font-family:inherit;cursor:pointer;border:none}
+  img{display:block;max-width:100%}
 
-  /* ---- top HUD ---- */
-  header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;
-    justify-content:space-between;padding:1rem 1.4rem;
-    background:linear-gradient(180deg,#05060af2,#05060a00)}
-  .brand{display:flex;align-items:center;gap:.7rem}
-  .plug{width:34px;height:34px;filter:drop-shadow(0 0 6px var(--volt))}
-  .brand h1{font-size:1.15rem;font-weight:700;letter-spacing:.04em}
-  .brand h1 b{color:var(--volt);font-weight:700}
-  .brand .sub{font-size:.6rem;letter-spacing:.42em;text-transform:uppercase;color:var(--ghost);margin-top:2px}
-  .status{display:flex;align-items:center;gap:1.2rem}
-  .gauge{text-align:right;line-height:1.1}
-  .gauge .v{font-family:'JetBrains Mono';font-size:.95rem;color:var(--volt)}
-  .gauge .l{font-size:.56rem;letter-spacing:.28em;text-transform:uppercase;color:var(--ghost)}
-  button{font-family:'Chakra Petch';cursor:pointer;border:none;font-weight:600;letter-spacing:.03em}
-  .connect{background:var(--volt);color:#0b0d18;padding:.62rem 1.15rem;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
-    text-transform:uppercase;font-size:.8rem}
-  .connect:hover{box-shadow:0 0 18px var(--volt)}
-  .connect.wired{background:transparent;color:var(--volt);outline:1px solid var(--volt)}
+  /* header */
+  header{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:1.2rem;
+    padding:.85rem 1.4rem;background:#070912e6;backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:.6rem;flex-shrink:0}
+  .logo svg{width:30px;height:30px;color:var(--volt);filter:drop-shadow(0 0 5px #ffd40088)}
+  .logo b{font-family:'Chakra Petch';font-weight:700;font-size:1.1rem;letter-spacing:.02em}
+  .logo b span{color:var(--volt)}
+  .search{flex:1;max-width:520px;position:relative}
+  .search input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);padding:.6rem .9rem .6rem 2.2rem;font-size:.9rem}
+  .search input:focus{outline:none;border-color:var(--line2)}
+  .search svg{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--faint)}
+  .hnav{display:flex;gap:.3rem;margin-left:auto}
+  .hnav a{padding:.5rem .8rem;border-radius:8px;font-weight:500;font-size:.9rem;color:var(--ghost)}
+  .hnav a.on,.hnav a:hover{color:var(--ink);background:var(--card)}
+  .connect{background:var(--volt);color:#0a0d18;font-weight:700;padding:.6rem 1.1rem;border-radius:10px;font-size:.9rem}
+  .connect:hover{box-shadow:0 0 16px #ffd40055}
+  .connect.on{background:var(--card);color:var(--ink);border:1px solid var(--line2)}
 
-  /* ---- left rail: grid feed ---- */
-  #rail{position:fixed;top:74px;left:0;bottom:0;width:340px;z-index:9;
-    padding:1rem 1rem 2rem;overflow-y:auto;
-    background:linear-gradient(90deg,#070a18f2,#070a1800);scrollbar-width:thin;scrollbar-color:var(--wire) transparent}
-  .rail-h{display:flex;align-items:center;justify-content:space-between;margin:.2rem .2rem 1rem}
-  .rail-h span{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ghost)}
-  .rail-h .count{color:var(--arc)}
-  .cell{position:relative;margin-bottom:.8rem;padding:.85rem;background:var(--panel);
-    border:1px solid var(--wire);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-    cursor:pointer;transition:border-color .2s, transform .15s}
-  .cell:hover{border-color:var(--arc);transform:translateX(3px)}
-  .cell.sel{border-color:var(--volt)}
-  .cell .top{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
-  .cell .name{font-weight:600;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .cell .id{font-family:'JetBrains Mono';font-size:.62rem;color:var(--ghost)}
-  .cell .watt{font-family:'JetBrains Mono';margin-top:.5rem;font-size:1.05rem;color:var(--volt);
-    display:flex;align-items:baseline;gap:.3rem}
-  .cell .watt small{font-size:.6rem;color:var(--volt-dim);letter-spacing:.1em}
-  .cell .arcbar{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--arc);box-shadow:0 0 8px var(--arc)}
+  /* hero band */
+  .hero{padding:2.2rem 1.4rem 1rem;max-width:1360px;margin:0 auto}
+  .hero h1{font-family:'Chakra Petch';font-size:1.9rem;letter-spacing:.01em}
+  .hero h1 span{color:var(--volt)}
+  .hero p{color:var(--ghost);margin-top:.35rem;font-size:.95rem;max-width:640px}
+  .stats{display:flex;gap:2.4rem;margin-top:1.4rem;flex-wrap:wrap}
+  .stat .n{font-family:'JetBrains Mono';font-size:1.35rem;font-weight:700}
+  .stat .n.volt{color:var(--volt)} .stat .n.arc{color:var(--arc)}
+  .stat .l{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:.15rem}
 
-  /* ---- detail panel ---- */
-  #detail{position:fixed;top:50%;right:-460px;transform:translateY(-50%);z-index:11;width:420px;
-    padding:1.5rem;background:var(--panel);border:1px solid var(--arc);
-    clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
-    transition:right .35s cubic-bezier(.2,.8,.2,1);backdrop-filter:blur(8px)}
-  #detail.open{right:1.4rem}
-  #detail .x{position:absolute;top:.8rem;right:1rem;background:none;color:var(--ghost);font-size:1.1rem}
-  #detail .dtag{font-size:.6rem;letter-spacing:.34em;text-transform:uppercase;color:var(--arc)}
-  #detail h2{font-size:1.5rem;margin:.3rem 0 .2rem;letter-spacing:.02em}
-  #detail .col{font-family:'JetBrains Mono';font-size:.7rem;color:var(--ghost);word-break:break-all}
-  #detail .price{font-family:'JetBrains Mono';font-size:2rem;color:var(--volt);margin:1.1rem 0 .2rem;
-    text-shadow:0 0 20px #ffd40055}
-  #detail .price small{font-size:.7rem;color:var(--volt-dim);letter-spacing:.15em}
-  #detail .row{display:flex;gap:.6rem;margin-top:1.1rem}
-  #detail .buy{flex:1;background:var(--volt);color:#0b0d18;padding:.8rem;text-transform:uppercase;font-size:.85rem;
-    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
-  #detail .buy:hover{box-shadow:0 0 22px var(--volt)}
-  #detail .offer{padding:.8rem 1rem;background:transparent;color:var(--arc);outline:1px solid var(--arc);text-transform:uppercase;font-size:.85rem}
-  #detail .meta{margin-top:1rem;font-size:.7rem;color:var(--ghost);line-height:1.7}
+  /* toolbar */
+  .toolbar{max-width:1360px;margin:1.2rem auto 0;padding:0 1.4rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .chip{padding:.45rem .9rem;border-radius:999px;font-size:.82rem;font-weight:500;color:var(--ghost);
+    background:var(--card);border:1px solid var(--line);cursor:pointer}
+  .chip.on{color:#0a0d18;background:var(--volt);border-color:var(--volt);font-weight:700}
+  .toolbar .right{margin-left:auto;display:flex;gap:.6rem}
+  .listbtn{background:transparent;color:var(--volt);border:1px solid var(--volt-dim);border-radius:10px;
+    padding:.5rem .9rem;font-weight:600;font-size:.85rem}
+  .listbtn:hover{border-color:var(--volt);box-shadow:0 0 12px #ffd40033}
 
-  /* ---- bottom console ---- */
-  #console{position:fixed;bottom:0;left:340px;right:0;z-index:8;padding:.5rem 1.4rem;
-    font-family:'JetBrains Mono';font-size:.68rem;color:var(--ghost);
-    background:linear-gradient(0deg,#05060af2,#05060a00);display:flex;gap:1.4rem;align-items:center}
-  #console .k{color:var(--arc)}
-  #console b{color:var(--volt)}
+  /* grid */
+  .grid{max-width:1360px;margin:1.3rem auto 5rem;padding:0 1.4rem;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1.1rem}
+  .nft{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    transition:transform .15s, border-color .15s, box-shadow .15s;cursor:pointer}
+  .nft:hover{transform:translateY(-3px);border-color:var(--line2);box-shadow:0 10px 30px #0008}
+  .nft .art{aspect-ratio:1;background:linear-gradient(135deg,#131a33,#0d1226);position:relative;overflow:hidden}
+  .nft .art img{width:100%;height:100%;object-fit:cover}
+  .nft .art .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#26305a;font-family:'Chakra Petch';font-size:2.6rem}
+  .nft .art .badge{position:absolute;top:.6rem;left:.6rem;background:#0a0d18cc;border:1px solid var(--line2);
+    border-radius:6px;padding:.15rem .5rem;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--live)}
+  .nft .body{padding:.75rem .85rem .85rem}
+  .nft .coll{font-size:.68rem;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nft .name{font-weight:600;font-size:.95rem;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nft .foot{display:flex;align-items:flex-end;justify-content:space-between;margin-top:.7rem}
+  .nft .price .p{font-family:'JetBrains Mono';font-weight:700;color:var(--volt);font-size:1rem}
+  .nft .price .u{font-size:.6rem;color:var(--volt-dim);letter-spacing:.1em}
+  .nft .price .lbl{font-size:.6rem;color:var(--faint);text-transform:uppercase;letter-spacing:.1em}
+  .nft .qbuy{opacity:0;background:var(--arc);color:#fff;font-weight:600;font-size:.78rem;
+    padding:.4rem .7rem;border-radius:8px;transition:opacity .15s}
+  .nft:hover .qbuy{opacity:1}
 
-  /* ---- list drawer ---- */
-  #listBtn{position:fixed;bottom:1rem;right:1.4rem;z-index:9;background:transparent;color:var(--volt);
-    outline:1px solid var(--volt-dim);padding:.55rem .9rem;text-transform:uppercase;font-size:.72rem}
-  #listBtn:hover{outline-color:var(--volt);box-shadow:0 0 14px #ffd40044}
+  .empty{grid-column:1/-1;text-align:center;padding:4rem 1rem;color:var(--ghost)}
+  .empty .ic{font-size:3rem;color:var(--line2);font-family:'Chakra Petch'}
+  .empty h3{margin:.6rem 0 .3rem;font-family:'Chakra Petch';font-weight:600;color:var(--ink)}
+  .empty button{margin-top:1rem;background:var(--volt);color:#0a0d18;font-weight:700;padding:.6rem 1.2rem;border-radius:10px}
+  .skel{background:linear-gradient(90deg,#111629,#161d38,#111629);background-size:200% 100%;
+    animation:sh 1.3s infinite;border-radius:14px;height:320px}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-  /* ---- toast ---- */
-  #toast{position:fixed;bottom:3rem;left:50%;transform:translateX(-50%) translateY(20px);z-index:20;
-    padding:.7rem 1.2rem;background:#0c1226;border:1px solid var(--arc);font-size:.8rem;
-    opacity:0;transition:.3s;pointer-events:none;max-width:80vw}
-  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  #toast.err{border-color:var(--hot)}
-
-  .empty{text-align:center;color:var(--ghost);font-size:.8rem;margin-top:3rem;line-height:1.9}
-  .empty .big{display:block;font-size:2.2rem;color:var(--wire);margin-bottom:.5rem}
-
-  @media (max-width:720px){
-    #rail{width:100%;top:auto;bottom:0;height:44vh;background:#070a18f5}
-    #detail{width:calc(100% - 2rem)}
-    #console{display:none} #detail.open{right:1rem}
-  }
-  a{color:var(--arc)}
-  .modal{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#05060ad9}
+  /* modal */
+  .modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:#04060cd9;padding:1rem}
   .modal.open{display:flex}
-  .modal .box{width:min(440px,92vw);padding:1.6rem;background:var(--panel);border:1px solid var(--volt)}
-  .modal h3{margin-bottom:1rem;letter-spacing:.04em}
-  .modal label{display:block;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ghost);margin:.8rem 0 .3rem}
-  .modal input{width:100%;background:#0a0e1e;border:1px solid var(--wire);color:var(--ink);padding:.6rem;font-family:'JetBrains Mono';font-size:.85rem}
-  .modal .go{margin-top:1.2rem;width:100%;background:var(--volt);color:#0b0d18;padding:.75rem;text-transform:uppercase}
+  .sheet{width:min(880px,96vw);max-height:92vh;overflow:auto;background:var(--bg2);border:1px solid var(--line2);
+    border-radius:18px;display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .sheet .art{aspect-ratio:1;background:linear-gradient(135deg,#131a33,#0d1226);display:flex;align-items:center;justify-content:center}
+  .sheet .art img{width:100%;height:100%;object-fit:cover}
+  .sheet .art .ph{color:#26305a;font-family:'Chakra Petch';font-size:4rem}
+  .sheet .info{padding:1.6rem}
+  .sheet .coll{font-size:.72rem;color:var(--arc);text-transform:uppercase;letter-spacing:.1em}
+  .sheet h2{font-family:'Chakra Petch';font-size:1.7rem;margin:.25rem 0 .1rem}
+  .sheet .owner{font-size:.78rem;color:var(--ghost)}
+  .sheet .pricebox{margin:1.3rem 0;padding:1.1rem;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .sheet .pricebox .lbl{font-size:.66rem;color:var(--faint);text-transform:uppercase;letter-spacing:.1em}
+  .sheet .pricebox .p{font-family:'JetBrains Mono';font-size:2.1rem;font-weight:700;color:var(--volt);margin-top:.2rem}
+  .sheet .pricebox .p small{font-size:.8rem;color:var(--volt-dim)}
+  .sheet .actions{display:flex;gap:.7rem;margin-top:1rem}
+  .sheet .buy{flex:1;background:var(--volt);color:#0a0d18;font-weight:700;padding:.85rem;border-radius:11px;font-size:.95rem}
+  .sheet .buy:hover{box-shadow:0 0 20px #ffd40055}
+  .sheet .offer{padding:.85rem 1.2rem;background:transparent;color:var(--arc);border:1px solid var(--arc);border-radius:11px;font-weight:600}
+  .sheet .meta{margin-top:1.3rem;font-size:.8rem;color:var(--ghost);line-height:1.9;word-break:break-all}
+  .sheet .meta b{color:var(--faint);font-weight:500;text-transform:uppercase;font-size:.64rem;letter-spacing:.1em;display:block}
+  .x{position:absolute;top:1rem;right:1rem;background:#0a0d18aa;color:var(--ghost);border-radius:8px;width:32px;height:32px;font-size:1.1rem}
+  @media(max-width:680px){ .sheet{grid-template-columns:1fr} .hnav{display:none} }
+
+  .form label{display:block;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:.9rem 0 .3rem}
+  .form input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:.65rem;font-family:'JetBrains Mono';font-size:.9rem}
+  .form input:focus{outline:none;border-color:var(--arc)}
+  .form .go{margin-top:1.3rem;width:100%;background:var(--volt);color:#0a0d18;font-weight:700;padding:.8rem;border-radius:11px}
+  .modal .box{width:min(440px,94vw);background:var(--bg2);border:1px solid var(--line2);border-radius:16px;padding:1.6rem;position:relative}
+  .modal .box h3{font-family:'Chakra Petch';margin-bottom:.3rem}
+  .modal .box p.sub{font-size:.82rem;color:var(--ghost);margin-bottom:.4rem}
+
+  #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(20px);z-index:80;
+    background:var(--card);border:1px solid var(--arc);border-radius:11px;padding:.75rem 1.2rem;font-size:.88rem;
+    opacity:0;transition:.28s;pointer-events:none;max-width:88vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{border-color:var(--hot)} #toast.ok{border-color:var(--live)}
+  .net{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--ghost);margin-right:.4rem}
+  .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--faint)} .dot.up{background:var(--live);box-shadow:0 0 6px var(--live)}
 </style>
 </head>
 <body>
-<canvas id="grid"></canvas>
-
 <header>
-  <div class="brand">
-    <svg class="plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--volt)">
-      <path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5V8zM12 16v6"/>
-    </svg>
-    <div>
-      <h1>WATTx <b>GRID</b> MARKET</h1>
-      <div class="sub">energized asset exchange</div>
-    </div>
+  <a class="logo" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5V8zM12 16v6"/></svg>
+    <b>WATTx <span>NFT</span></b>
+  </a>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+    <input id="search" placeholder="Search by collection or token id" />
   </div>
-  <div class="status">
-    <div class="gauge"><div class="v mono" id="netv">— V</div><div class="l">grid status</div></div>
-    <div class="gauge"><div class="v mono" id="blk">#—</div><div class="l">block</div></div>
-    <button class="connect" id="connect">Connect grid</button>
-  </div>
+  <nav class="hnav">
+    <a class="on" data-view="explore">Explore</a>
+    <a data-view="mine">My items</a>
+    <a data-view="activity">Activity</a>
+  </nav>
+  <div class="net"><span class="dot" id="dot"></span><span id="netlabel">WATTx</span></div>
+  <button class="connect" id="connect">Connect wallet</button>
 </header>
 
-<aside id="rail">
-  <div class="rail-h"><span>Live cells</span><span class="count mono" id="cellcount">0</span></div>
-  <div id="feed">
-    <div class="empty"><span class="big mono">⚡</span>Connect to the grid<br />to energize the market feed.</div>
+<section class="hero">
+  <h1>WATTx <span>NFT</span> Marketplace</h1>
+  <p>Buy, sell, and make offers on NFTs across any collection on the WATTx chain. Non-custodial — trades settle on-chain, in WTX.</p>
+  <div class="stats">
+    <div class="stat"><div class="n volt" id="sFloor">—</div><div class="l">Floor price</div></div>
+    <div class="stat"><div class="n" id="sListed">—</div><div class="l">Listed</div></div>
+    <div class="stat"><div class="n arc" id="sColls">—</div><div class="l">Collections</div></div>
+    <div class="stat"><div class="n" id="sFee">2.0%</div><div class="l">Market fee</div></div>
   </div>
-</aside>
+</section>
 
-<div id="detail">
-  <button class="x" id="closeDetail">✕</button>
-  <div class="dtag">voltage cell</div>
-  <h2 id="dName">—</h2>
-  <div class="col mono" id="dColl">—</div>
-  <div class="price mono" id="dPrice">— <small>WTX</small></div>
-  <div class="row">
-    <button class="buy" id="dBuy">Discharge · Buy</button>
-    <button class="offer" id="dOffer">Offer</button>
-  </div>
-  <div class="meta" id="dMeta"></div>
+<div class="toolbar">
+  <div class="chip on" data-filter="all">All</div>
+  <div class="chip" data-filter="lowhigh">Price ↑</div>
+  <div class="chip" data-filter="highlow">Price ↓</div>
+  <div class="chip" data-filter="new">Newest</div>
+  <div class="right"><button class="listbtn" id="listBtn">+ List an NFT</button></div>
 </div>
 
-<div id="console">
-  <span><span class="k">MARKET</span> <b id="cAddr">0xecaa…1dd2</b></span>
-  <span><span class="k">CHAIN</span> WATTx <b>22356</b></span>
-  <span><span class="k">FEE</span> <b id="cFee">2.0%</b></span>
-  <span><span class="k">WALLET</span> <b id="cWallet">not connected</b></span>
-</div>
-<button id="listBtn">+ Energize a cell (list)</button>
+<main class="grid" id="grid"></main>
 
+<!-- detail -->
+<div class="modal" id="detail">
+  <div class="sheet" style="position:relative">
+    <button class="x" id="dX">✕</button>
+    <div class="art" id="dArt"><div class="ph">◈</div></div>
+    <div class="info">
+      <div class="coll" id="dColl">—</div>
+      <h2 id="dName">—</h2>
+      <div class="owner" id="dOwner"></div>
+      <div class="pricebox">
+        <div class="lbl">Price</div>
+        <div class="p mono" id="dPrice">— <small>WTX</small></div>
+      </div>
+      <div class="actions">
+        <button class="buy" id="dBuy">Buy now</button>
+        <button class="offer" id="dOffer">Make offer</button>
+      </div>
+      <div class="meta" id="dMeta"></div>
+    </div>
+  </div>
+</div>
+
+<!-- list -->
 <div class="modal" id="listModal">
-  <div class="box">
-    <h3>Energize a cell — list an NFT</h3>
+  <div class="box form">
+    <button class="x" id="lX">✕</button>
+    <h3>List an NFT</h3>
+    <p class="sub">Two steps: approve the marketplace on your NFT, then list it for sale in WTX.</p>
     <label>Collection address</label><input id="mColl" placeholder="0x…" />
-    <label>Token ID</label><input id="mId" class="mono" placeholder="1" />
-    <label>Price (WTX)</label><input id="mPrice" class="mono" placeholder="100" />
+    <label>Token ID</label><input id="mId" placeholder="1" />
+    <label>Price (WTX)</label><input id="mPrice" placeholder="100" />
     <button class="go" id="mGo">Approve &amp; list</button>
-    <p style="margin-top:.8rem;font-size:.66rem;color:var(--ghost)">Two transactions: approve the market on your NFT, then list it. Price is charged in satoshis on-chain (1 WTX = 1e8).</p>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<script type="module">
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
-/* ===================== 3D POWER GRID ===================== */
-const VOID = 0x05060a, ARC = 0x2e6bff, VOLT = 0xffd400;
-const canvas = document.getElementById('grid');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(VOID, 0.055);
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
-camera.position.set(0, 3.4, 9);
-
-// receding grid floor
-const grid = new THREE.GridHelper(120, 120, ARC, 0x101838);
-grid.position.y = -0.01; scene.add(grid);
-const gridGlow = new THREE.GridHelper(120, 24, VOLT, 0x000000);
-gridGlow.material.opacity = 0.22; gridGlow.material.transparent = true; scene.add(gridGlow);
-
-// voltage cells (hexagonal prisms) hold market items
-const cells = [];
-const cellGeo = new THREE.CylinderGeometry(0.9, 0.9, 1.5, 6, 1, true);
-const edgeGeo = new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.92,0.92,1.55,6));
-function makeCell(x, z, energized) {
-  const g = new THREE.Group();
-  const shell = new THREE.Mesh(cellGeo, new THREE.MeshBasicMaterial({ color: ARC, transparent:true, opacity:0.06, side:THREE.DoubleSide }));
-  const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: energized?VOLT:ARC }));
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34,0), new THREE.MeshBasicMaterial({ color: energized?VOLT:ARC }));
-  core.position.y = 0; g.add(shell, edges, core);
-  g.position.set(x, 0.9, z); g.userData = { core, edges, spin: 0.2+Math.random()*0.4, energized };
-  scene.add(g); cells.push(g); return g;
-}
-// ambient field of dim cells for depth
-for (let i=0;i<26;i++){ const a=Math.random()*Math.PI*2, r=6+Math.random()*22; makeCell(Math.cos(a)*r, -Math.abs(Math.sin(a)*r)-2, false); }
-
-// electron particles flowing along the grid
-const pCount = 300, pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(pCount*3);
-for (let i=0;i<pCount;i++){ pPos[i*3]=(Math.random()-0.5)*80; pPos[i*3+1]=Math.random()*0.2; pPos[i*3+2]=(Math.random()-0.5)*80; }
-pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
-const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: VOLT, size:0.06, transparent:true, opacity:0.8 }));
-scene.add(particles);
-
-// bloom
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.9, 0.5, 0.1);
-composer.addPass(bloom);
-
-let mx=0, my=0;
-addEventListener('mousemove', e=>{ mx=(e.clientX/innerWidth-0.5); my=(e.clientY/innerHeight-0.5); });
-function resize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); }
-addEventListener('resize', resize); resize();
-
-const clock = new THREE.Clock();
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-function animate(){
-  requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  if(!reduce){
-    cells.forEach((c,i)=>{ c.userData.core.rotation.y += 0.01*c.userData.spin; c.userData.core.rotation.x += 0.006*c.userData.spin;
-      c.position.y = 0.9 + Math.sin(t*0.8+i)*0.12; });
-    const pos = particles.geometry.attributes.position.array;
-    for(let i=0;i<pCount;i++){ pos[i*3+2]+=0.06; if(pos[i*3+2]>40) pos[i*3+2]=-40; }
-    particles.geometry.attributes.position.needsUpdate = true;
-    camera.position.x += (mx*2.4 - camera.position.x)*0.03;
-    camera.position.y += (3.4 - my*1.5 - camera.position.y)*0.03;
-    camera.lookAt(0,0.8,0);
-  }
-  composer.render();
-}
-animate();
-
-// promote a feed item to an energized cell near the camera
-const liveCells = [];
-function energizeCells(n){
-  liveCells.forEach(c=>scene.remove(c)); liveCells.length=0;
-  const span = Math.max(n,1);
-  for(let i=0;i<n;i++){ const x=(i-(span-1)/2)*2.6; const c=makeCell(x, 1.5, true); liveCells.push(c); cells.pop(); scene.add(c); }
-}
-
-/* ===================== MARKET CONTRACT ===================== */
+<script>
 const MARKET = '0xecaa2cd631fe0611c09ef6fc58573faad0f31dd2';
 const CHAIN = { chainId:'0x5754', chainName:'WATTx', nativeCurrency:{name:'WATTx',symbol:'WTX',decimals:8},
   rpcUrls:['http://rpc-wtx.wattxchange.app:8545'], blockExplorerUrls:['https://wtx-explorer.wattxchange.app'] };
-const SAT = 100000000n; // 1 WTX = 1e8 (WATTx satoshi units)
+const READ_RPC = 'http://rpc-wtx.wattxchange.app:8545';
 const ABI = [
   'function feeBps() view returns (uint16)',
   'function listings(address,uint256) view returns (address seller,uint256 price,bool active)',
@@ -281,111 +229,160 @@ const ABI = [
   'function list(address collection,uint256 tokenId,uint256 priceSat)',
   'event Listed(address indexed collection,uint256 indexed tokenId,address indexed seller,uint256 price)'
 ];
-const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function tokenURI(uint256) view returns (string)'];
+const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function symbol() view returns (string)','function tokenURI(uint256) view returns (string)'];
 
-let provider, signer, me;
-const $ = id=>document.getElementById(id);
-const wtx = sat => (Number(sat)/1e8).toLocaleString(undefined,{maximumFractionDigits:4});
-function toast(msg, err){ const t=$('toast'); t.textContent=msg; t.className='show'+(err?' err':''); setTimeout(()=>t.className='',3800); }
+const $=id=>document.getElementById(id);
+const wtx=sat=>(Number(sat)/1e8).toLocaleString(undefined,{maximumFractionDigits:4});
+const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'';
+const ipfs=u=>u&&u.startsWith('ipfs://')?u.replace('ipfs://','https://ipfs.io/ipfs/'):u;
+function toast(m,cls){const t=$('toast');t.textContent=m;t.className='show '+(cls||'');setTimeout(()=>t.className='',3600);}
 
-let listingsData = [];
+let provider, signer, me, readProvider, items=[], view='explore', filter='all', selected=null;
+
+function getRead(){
+  // reads go through the connected wallet if present (avoids HTTPS→HTTP block),
+  // else a direct JsonRpcProvider (works when the page is opened over http)
+  if(signer) return provider;
+  if(!readProvider){ try{ readProvider=new ethers.JsonRpcProvider(READ_RPC); }catch{ readProvider=null; } }
+  return readProvider;
+}
 
 async function connect(){
-  if(!window.ethereum){ toast('Install MetaMask to enter the grid.', true); return; }
-  provider = new ethers.BrowserProvider(window.ethereum);
+  if(!window.ethereum){ toast('Install MetaMask to trade on WATTx.','err'); return; }
+  provider=new ethers.BrowserProvider(window.ethereum);
   try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN.chainId}]}); }
   catch(e){ if(e.code===4902) await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]}); }
   await provider.send('eth_requestAccounts',[]);
-  signer = await provider.getSigner(); me = await signer.getAddress();
-  $('connect').textContent = me.slice(0,6)+'…'+me.slice(-4); $('connect').classList.add('wired');
-  $('cWallet').textContent = me.slice(0,6)+'…'+me.slice(-4);
-  refresh();
+  signer=await provider.getSigner(); me=await signer.getAddress();
+  $('connect').textContent=short(me); $('connect').classList.add('on');
+  $('dot').classList.add('up');
+  load();
 }
 
-async function refresh(){
+async function load(){
+  const p=getRead();
+  const gridEl=$('grid');
+  if(!p){ gridEl.innerHTML=emptyHTML('Connect your wallet','Reading WATTx requires a wallet connection (the public RPC is HTTP-only).', true); return; }
+  gridEl.innerHTML=Array.from({length:8}).map(()=>'<div class="skel"></div>').join('');
   try{
-    const net = await provider.getNetwork();
-    const blk = await provider.getBlockNumber();
-    $('netv').textContent = '400 V'; $('blk').textContent = '#'+blk;
-    const c = new ethers.Contract(MARKET, ABI, provider);
-    const fee = await c.feeBps(); $('cFee').textContent = (Number(fee)/100).toFixed(1)+'%';
-    // discover listings from Listed events (last ~50k blocks)
-    const from = Math.max(0, blk-50000);
-    const logs = await c.queryFilter('Listed', from, blk);
-    const seen = new Map();
-    for(const l of logs){ const key=l.args.collection+'/'+l.args.tokenId; seen.set(key, l.args); }
-    const rows = [];
-    for(const [key,a] of seen){
-      const ls = await c.listings(a.collection, a.tokenId);
-      if(ls.active){
-        let name = 'NFT #'+a.tokenId;
-        try{ const nft=new ethers.Contract(a.collection,ERC721,provider); name=(await nft.name())+' #'+a.tokenId; }catch{}
-        rows.push({ collection:a.collection, tokenId:a.tokenId.toString(), price:ls.price, seller:ls.seller, name });
-      }
+    const c=new ethers.Contract(MARKET,ABI,p);
+    try{ const fee=await c.feeBps(); $('sFee').textContent=(Number(fee)/100).toFixed(1)+'%'; }catch{}
+    const blk=await p.getBlockNumber();
+    const from=Math.max(0,blk-100000);
+    const logs=await c.queryFilter('Listed',from,blk);
+    const seen=new Map();
+    for(const l of logs) seen.set(l.args.collection+'/'+l.args.tokenId, l);
+    const rows=[];
+    for(const [,l] of seen){
+      const coll=l.args.collection, id=l.args.tokenId;
+      const ls=await c.listings(coll,id);
+      if(!ls.active) continue;
+      const meta={collection:coll,tokenId:id.toString(),price:ls.price,seller:ls.seller,block:l.blockNumber,
+        collName:short(coll),name:'#'+id,image:null,traits:[]};
+      try{ const nft=new ethers.Contract(coll,ERC721,p);
+        meta.collName=await nft.name(); meta.name=meta.collName+' #'+id;
+        let uri=await nft.tokenURI(id); uri=ipfs(uri);
+        if(uri){ const j=await fetch(uri).then(r=>r.json()).catch(()=>null);
+          if(j){ meta.name=j.name||meta.name; meta.image=ipfs(j.image); meta.traits=j.attributes||[]; } }
+      }catch{}
+      rows.push(meta);
     }
-    listingsData = rows; renderFeed(); energizeCells(Math.min(rows.length,7));
-  }catch(e){ console.error(e); toast('Grid read failed: '+(e.shortMessage||e.message), true); }
+    items=rows; render();
+  }catch(e){ console.error(e); gridEl.innerHTML=emptyHTML('Could not reach WATTx',(e.shortMessage||e.message||'RPC error'),false); }
 }
 
-function renderFeed(){
-  $('cellcount').textContent = listingsData.length; $('cWallet');
-  const feed = $('feed');
-  if(!listingsData.length){ feed.innerHTML='<div class="empty"><span class="big mono">◇</span>No energized cells.<br />Be the first to list.</div>'; return; }
-  feed.innerHTML = listingsData.map((r,i)=>`
-    <div class="cell" data-i="${i}">
-      <div class="arcbar"></div>
-      <div class="top"><span class="name">${r.name}</span><span class="id mono">#${r.tokenId}</span></div>
-      <div class="watt mono">${wtx(r.price)} <small>WTX</small></div>
+function emptyHTML(h,sub,showList){
+  return `<div class="empty"><div class="ic">◈</div><h3>${h}</h3><p>${sub}</p>${showList?'<button onclick="document.getElementById(\'connect\').click()">Connect wallet</button>':''}</div>`;
+}
+
+function render(){
+  let list=items.slice();
+  const q=$('search').value.trim().toLowerCase();
+  if(q) list=list.filter(i=>i.collection.toLowerCase().includes(q)||i.tokenId.includes(q)||i.name.toLowerCase().includes(q)||i.collName.toLowerCase().includes(q));
+  if(view==='mine'&&me) list=list.filter(i=>i.seller.toLowerCase()===me.toLowerCase());
+  if(filter==='lowhigh') list.sort((a,b)=>Number(a.price-b.price));
+  if(filter==='highlow') list.sort((a,b)=>Number(b.price-a.price));
+  if(filter==='new') list.sort((a,b)=>b.block-a.block);
+
+  // stats
+  $('sListed').textContent=items.length;
+  $('sColls').textContent=new Set(items.map(i=>i.collection)).size;
+  $('sFloor').textContent=items.length? wtx(items.reduce((m,i)=>i.price<m?i.price:m,items[0].price))+' WTX':'—';
+
+  const g=$('grid');
+  if(!list.length){ g.innerHTML=emptyHTML(view==='mine'?'You have no listings':'No NFTs listed yet',
+      view==='mine'?'List an NFT to see it here.':'Be the first to list on WATTx.',false); return; }
+  g.innerHTML=list.map((i,idx)=>`
+    <div class="nft" data-i="${idx}">
+      <div class="art">${i.image?`<img src="${i.image}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="ph" style="display:none">◈</div>`:'<div class="ph">◈</div>'}
+        <div class="badge">Listed</div></div>
+      <div class="body">
+        <div class="coll">${i.collName}</div>
+        <div class="name">${i.name}</div>
+        <div class="foot">
+          <div class="price"><div class="lbl">Price</div><span class="p">${wtx(i.price)}</span> <span class="u">WTX</span></div>
+          <button class="qbuy" data-buy="${idx}">Buy</button>
+        </div>
+      </div>
     </div>`).join('');
-  feed.querySelectorAll('.cell').forEach(el=>el.onclick=()=>openDetail(+el.dataset.i, el));
+  g._list=list;
+  g.querySelectorAll('.nft').forEach(el=>el.onclick=e=>{ if(e.target.dataset.buy!==undefined){ quickBuy(g._list[+e.target.dataset.buy]); } else openDetail(g._list[+el.dataset.i]); });
 }
 
-let selected = null;
-function openDetail(i, el){
-  document.querySelectorAll('.cell.sel').forEach(c=>c.classList.remove('sel')); el&&el.classList.add('sel');
-  const r = listingsData[i]; selected = r;
-  $('dName').textContent = r.name;
-  $('dColl').textContent = r.collection;
-  $('dPrice').innerHTML = wtx(r.price)+' <small>WTX</small>';
-  $('dMeta').innerHTML = `seller ${r.seller.slice(0,8)}…${r.seller.slice(-6)}<br/>token id ${r.tokenId}`;
+function openDetail(i){
+  selected=i;
+  $('dArt').innerHTML=i.image?`<img src="${i.image}" onerror="this.parentNode.innerHTML='<div class=ph>◈</div>'"/>`:'<div class="ph">◈</div>';
+  $('dColl').textContent=i.collName; $('dName').textContent=i.name;
+  $('dOwner').textContent='Seller '+short(i.seller);
+  $('dPrice').innerHTML=wtx(i.price)+' <small>WTX</small>';
+  const traits=(i.traits||[]).slice(0,6).map(t=>`${t.trait_type||t.trait||'trait'}: <span style="color:var(--ink)">${t.value}</span>`).join('<br/>');
+  $('dMeta').innerHTML=`<b>Contract</b>${i.collection}<br/><b>Token ID</b>${i.tokenId}${traits?'<br/><b>Traits</b>'+traits:''}`;
   $('detail').classList.add('open');
 }
-$('closeDetail').onclick = ()=>$('detail').classList.remove('open');
-
-$('dBuy').onclick = async ()=>{
+async function quickBuy(i){ selected=i; await doBuy(); }
+async function doBuy(){
+  if(!signer){ await connect(); if(!signer) return; }
+  if(!selected) return;
+  try{ toast('Confirm the purchase in your wallet…');
+    const c=new ethers.Contract(MARKET,ABI,signer);
+    const tx=await c.buy(selected.collection,selected.tokenId,{value:selected.price});
+    toast('Purchase submitted…'); await tx.wait();
+    toast('Bought '+selected.name+' ⚡','ok'); $('detail').classList.remove('open'); load();
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,130),'err'); }
+}
+$('dBuy').onclick=doBuy;
+$('dOffer').onclick=async()=>{
   if(!signer){ await connect(); return; } if(!selected) return;
-  try{ toast('Discharging cell…');
-    const c = new ethers.Contract(MARKET, ABI, signer);
-    const tx = await c.buy(selected.collection, selected.tokenId, { value: selected.price });
-    await tx.wait(); toast('Acquired ⚡ '+selected.name); $('detail').classList.remove('open'); refresh();
-  }catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
-};
-$('dOffer').onclick = async ()=>{
-  if(!signer){ await connect(); return; } if(!selected) return;
-  const v = prompt('Offer amount in WTX'); if(!v) return;
+  const v=prompt('Offer amount in WTX'); if(!v) return;
   try{ const c=new ethers.Contract(MARKET,ABI,signer);
-    const tx=await c.makeOffer(selected.collection, selected.tokenId, { value: BigInt(Math.floor(+v*1e8)) });
-    await tx.wait(); toast('Offer escrowed: '+v+' WTX'); }
-  catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
+    const tx=await c.makeOffer(selected.collection,selected.tokenId,{value:BigInt(Math.floor(+v*1e8))});
+    toast('Offer submitted…'); await tx.wait(); toast('Offer of '+v+' WTX escrowed','ok');
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,130),'err'); }
+};
+$('dX').onclick=()=>$('detail').classList.remove('open');
+
+$('listBtn').onclick=()=>{ if(!signer){ connect(); return; } $('listModal').classList.add('open'); };
+$('lX').onclick=()=>$('listModal').classList.remove('open');
+$('mGo').onclick=async()=>{
+  const coll=$('mColl').value.trim(),id=$('mId').value.trim(),price=$('mPrice').value.trim();
+  if(!coll||!id||!price) return toast('Fill in all fields','err');
+  try{ toast('Approve the marketplace in your wallet…');
+    const nft=new ethers.Contract(coll,ERC721,signer); await (await nft.approve(MARKET,id)).wait();
+    toast('Now confirm the listing…');
+    const c=new ethers.Contract(MARKET,ABI,signer); await (await c.list(coll,id,BigInt(Math.floor(+price*1e8)))).wait();
+    toast('Listed for '+price+' WTX ⚡','ok'); $('listModal').classList.remove('open'); load();
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,130),'err'); }
 };
 
-$('listBtn').onclick = ()=>{ if(!signer){ connect(); return; } $('listModal').classList.add('open'); };
-$('listModal').onclick = e=>{ if(e.target.id==='listModal') e.target.classList.remove('open'); };
-$('mGo').onclick = async ()=>{
-  const coll=$('mColl').value.trim(), id=$('mId').value.trim(), price=$('mPrice').value.trim();
-  if(!coll||!id||!price) return toast('Fill in all fields', true);
-  try{ toast('Approving…');
-    const nft=new ethers.Contract(coll, ERC721, signer);
-    await (await nft.approve(MARKET, id)).wait();
-    toast('Listing…');
-    const c=new ethers.Contract(MARKET, ABI, signer);
-    await (await c.list(coll, id, BigInt(Math.floor(+price*1e8)))).wait();
-    toast('Cell energized ⚡'); $('listModal').classList.remove('open'); refresh();
-  }catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
-};
+document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; render(); });
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
+$('search').oninput=()=>render();
+$('connect').onclick=connect;
+[$('detail'),$('listModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
+window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>location.reload());
 
-$('connect').onclick = connect;
-window.ethereum && window.ethereum.on && window.ethereum.on('accountsChanged', ()=>location.reload());
+// try a read on load (works if opened over http / with wallet); otherwise prompt connect
+load();
 </script>
 </body>
 </html>
