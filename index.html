@@ -219,8 +219,8 @@
 <script>
 const MARKET = '0xecaa2cd631fe0611c09ef6fc58573faad0f31dd2';
 const CHAIN = { chainId:'0x5754', chainName:'WATTx', nativeCurrency:{name:'WATTx',symbol:'WTX',decimals:8},
-  rpcUrls:['http://rpc-wtx.wattxchange.app:8545'], blockExplorerUrls:['https://wtx-explorer.wattxchange.app'] };
-const READ_RPC = 'http://rpc-wtx.wattxchange.app:8545';
+  rpcUrls:['https://rpc-wtx.wattxchange.app'], blockExplorerUrls:['https://wtx-explorer.wattxchange.app'] };
+const READ_RPC = 'https://rpc-wtx.wattxchange.app';
 const ABI = [
   'function feeBps() view returns (uint16)',
   'function listings(address,uint256) view returns (address seller,uint256 price,bool active)',
