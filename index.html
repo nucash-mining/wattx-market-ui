@@ -417,23 +417,33 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.netsel')) $('netme
 // ---- add-WATTx popup ----
 $('aX').onclick=()=>$('addModal').classList.remove('open');
 $('aGo').onclick=async()=>{
-  try{ await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]});
-    $('addModal').classList.remove('open'); toast('WATTx added — connecting…','ok'); await connect();
+  if(!window.ethereum){ toast('No wallet detected.','err'); return; }
+  try{
+    // add the network (idempotent — no-ops if already present)
+    await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]});
+    // then make it the active chain (adding doesn't always switch)
+    try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN.chainId}]}); }catch(_){}
+    const cur=await window.ethereum.request({method:'eth_chainId'}).catch(()=>null);
+    const on=cur===CHAIN.chainId; setNetBadge(on);
+    $('addModal').classList.remove('open');
+    toast(on?'You are on WATTx ⚡':'WATTx added — switch to it in your wallet', on?'ok':'err');
+    if(!signer){ await connect(); } else { load(); }
   }catch(e){ toast((e.shortMessage||e.message||'Could not add WATTx').slice(0,120),'err'); }
 };
 
 async function connect(){
   if(!window.ethereum){ toast('Install an EVM wallet (MetaMask or Rabby) to use WATTx.','err'); return; }
   provider=new ethers.BrowserProvider(window.ethereum);
-  // is WATTx already in the wallet? if the switch fails as 4902, offer the add popup
-  let ok=false;
-  try{ ok=await ensureWattx(); }
-  catch(e){ if(e.notAdded){ $('addModal').classList.add('open'); return; } } // user adds WATTx via the popup, then connects
-  setNetBadge(ok);
+  // connect the account FIRST (wallets require this before switching/adding chains)
   await provider.send('eth_requestAccounts',[]);
   signer=await provider.getSigner(); me=await signer.getAddress();
   $('connect').textContent=short(me); $('connect').classList.add('on');
-  if(!ok) toast('Connected — switch your wallet to WATTx to mint or trade.','err');
+
+  // now check the chain. Not on WATTx? Always show the add/switch popup —
+  // don't rely on the wallet returning a 4902 code (Rabby often doesn't).
+  const cur=await window.ethereum.request({method:'eth_chainId'}).catch(()=>null);
+  if(cur===CHAIN.chainId){ setNetBadge(true); }
+  else { setNetBadge(false); $('addModal').classList.add('open'); }
   load();
 }
 if(window.ethereum&&window.ethereum.on){ window.ethereum.on('chainChanged',()=>{ if(window.ethereum.chainId) setNetBadge(window.ethereum.chainId===CHAIN.chainId); }); }
