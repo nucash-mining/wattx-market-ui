@@ -172,6 +172,7 @@
   </div>
   <nav class="hnav">
     <a class="on" data-view="explore">Explore</a>
+    <a data-view="ordinals">Ordinals</a>
     <a data-view="mine">My items</a>
     <a data-view="activity">Activity</a>
   </nav>
@@ -296,6 +297,7 @@
 <div id="toast"></div>
 
 <script>
+const ORD_API = 'https://ord-api.wattxchange.app'; // WATTx UTXO/ordinals indexer
 const MARKET = '0xecaa2cd631fe0611c09ef6fc58573faad0f31dd2';
 const FACTORY = '0x62e724c418aab09942c333097a9320cfe4925c83';
 const DEFAULT_COLLECTION = '0xa647fc9e0531d7bb8757fca19048b2fc9442b1da'; // "WATTx NFTs", open mint
@@ -675,7 +677,28 @@ $('mGo').onclick=async()=>{
   }catch(e){ toast((e.shortMessage||e.message).slice(0,130),'err'); }
 };
 
-document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; render(); });
+// ---- Ordinals (UTXO inscriptions, via the WATTx indexer API) ----
+async function loadOrdinals(){
+  const g=$('grid');
+  g.innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
+  try{
+    const r=await fetch(ORD_API+'/inscriptions?limit=60').then(x=>x.json());
+    $('sListed').textContent=r.total; $('sColls').textContent='UTXO'; $('sFloor').textContent='Ordinals';
+    if(!r.items||!r.items.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>No ordinals yet</h3><p>Inscribe the first WATTx ordinal — files up to ~2 MB, on the base chain.</p></div>`; return; }
+    g.innerHTML=r.items.map(o=>{
+      const isImg=o.contentType&&o.contentType.startsWith('image/');
+      const art=isImg?`<img src="${ORD_API}/inscription/${o.id}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="ph" style="display:none">◈</div>`:'<div class="ph">◈</div>';
+      return `<div class="nft" onclick="window.open('${ORD_API}/inscription/${o.id}','_blank')">
+        <div class="art">${art}<div class="badge" style="color:var(--arc)">ORDINAL</div></div>
+        <div class="body"><div class="coll">${o.contentType}</div>
+          <div class="name mono">${o.id.slice(0,10)}…i0</div>
+          <div class="foot"><div class="price"><div class="lbl">Inscribed</div><span class="p" style="color:var(--arc);font-size:.9rem">block ${o.height}</span></div></div>
+        </div></div>`;
+    }).join('');
+  }catch(e){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>Ordinals indexer offline</h3><p>${ORD_API} isn't reachable yet — the WATTx UTXO API needs to be deployed publicly.</p></div>`; }
+}
+
+document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; if(view==='ordinals') loadOrdinals(); else render(); });
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
 $('search').oninput=()=>render();
 $('connect').onclick=connect;
