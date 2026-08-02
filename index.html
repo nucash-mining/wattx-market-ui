@@ -137,6 +137,27 @@
   #toast.err{border-color:var(--hot)} #toast.ok{border-color:var(--live)}
   .net{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--ghost);margin-right:.4rem}
   .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--faint)} .dot.up{background:var(--live);box-shadow:0 0 6px var(--live)}
+
+  /* network selector */
+  .netsel{position:relative}
+  .netbtn{display:flex;align-items:center;gap:.5rem;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:.55rem .8rem;color:var(--ink);font-weight:500;font-size:.88rem}
+  .netbtn:hover{border-color:var(--line2)}
+  .netbtn .ndot{width:.6rem;height:.6rem;border-radius:50%;background:var(--volt);box-shadow:0 0 6px currentColor}
+  .netbtn .chev{color:var(--faint);font-size:.7rem}
+  .netmenu{position:absolute;top:calc(100% + .5rem);right:0;width:250px;background:var(--bg2);
+    border:1px solid var(--line2);border-radius:12px;padding:.4rem;box-shadow:0 12px 40px #000a;z-index:50;display:none}
+  .netmenu.open{display:block}
+  .netmenu .grp{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:.5rem .6rem .3rem}
+  .chainitem{display:flex;align-items:center;gap:.6rem;padding:.55rem .6rem;border-radius:8px;cursor:pointer}
+  .chainitem:hover{background:var(--card)}
+  .chainitem.soon{opacity:.6;cursor:default}
+  .chainitem .cdot{width:.7rem;height:.7rem;border-radius:50%;flex-shrink:0}
+  .chainitem .cn{flex:1;font-size:.88rem}
+  .chainitem .cn small{display:block;color:var(--faint);font-size:.66rem}
+  .chainitem .bdg{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.12rem .45rem;border-radius:5px}
+  .bdg.live{background:#12331f;color:var(--live)} .bdg.soon{background:#2a2333;color:#b39bd6}
+  .chainitem.active{background:var(--card);outline:1px solid var(--line2)}
 </style>
 </head>
 <body>
@@ -154,9 +175,29 @@
     <a data-view="mine">My items</a>
     <a data-view="activity">Activity</a>
   </nav>
-  <div class="net"><span class="dot" id="dot"></span><span id="netlabel">WATTx</span></div>
+  <div class="netsel">
+    <button class="netbtn" id="netbtn"><span class="ndot" id="dot"></span><span id="netlabel">WATTx</span><span class="chev">▾</span></button>
+    <div class="netmenu" id="netmenu"></div>
+  </div>
   <button class="connect" id="connect">Connect wallet</button>
 </header>
+
+<!-- add-WATTx popup -->
+<div class="modal" id="addModal">
+  <div class="box" style="width:min(440px,94vw)">
+    <button class="x" id="aX">✕</button>
+    <h3>Add WATTx to your wallet</h3>
+    <p class="sub">This marketplace runs on the WATTx chain. Add it to Rabby / MetaMask in one click, then approve the network prompt in your wallet.</p>
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.9rem 1rem;font-family:'JetBrains Mono';font-size:.78rem;line-height:1.9;margin:.6rem 0">
+      <div><span style="color:var(--faint)">Network</span> &nbsp;WATTx</div>
+      <div><span style="color:var(--faint)">RPC</span> &nbsp;https://rpc-wtx.wattxchange.app</div>
+      <div><span style="color:var(--faint)">Chain ID</span> &nbsp;22356</div>
+      <div><span style="color:var(--faint)">Symbol</span> &nbsp;WTX</div>
+      <div><span style="color:var(--faint)">Explorer</span> &nbsp;wtx-explorer.wattxchange.app</div>
+    </div>
+    <button class="go" id="aGo">Add WATTx network</button>
+  </div>
+</div>
 
 <section class="hero">
   <h1>WATTx <span>NFT</span> Marketplace</h1>
@@ -272,6 +313,23 @@ const ABI = [
 const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function symbol() view returns (string)','function tokenURI(uint256) view returns (string)','function mint(address to,string uri) returns (uint256)','function openMint() view returns (bool)'];
 const FACTORY_ABI = ['function createCollection(string name,string symbol,uint96 royaltyBps,bool openMint) returns (address)','function collectionsOf(address,uint256) view returns (address)','function collectionsCountOf(address) view returns (uint256)'];
 
+// Chains the marketplace knows about. Only WATTx has the contracts deployed;
+// everything else is "coming soon" until its marketplace + (for ordinals) an
+// inscription path is deployed. BTC/BSV are UTXO chains — an ordinals wallet
+// like Xverse, not an EVM wallet.
+const CHAINS = {
+  wattx:    { name:'WATTx', sub:'Ordinals + NFTs', type:'evm', status:'live', color:'#ffd400',
+              chainId:'0x5754', symbol:'WTX', decimals:18, rpc:'https://rpc-wtx.wattxchange.app',
+              explorer:'https://wtx-explorer.wattxchange.app' },
+  ethereum: { name:'Ethereum', sub:'EVM', type:'evm', status:'soon', color:'#627eea', chainId:'0x1', symbol:'ETH' },
+  bsc:      { name:'BNB Chain', sub:'EVM', type:'evm', status:'soon', color:'#f0b90b', chainId:'0x38', symbol:'BNB' },
+  polygon:  { name:'Polygon', sub:'EVM', type:'evm', status:'soon', color:'#8247e5', chainId:'0x89', symbol:'POL' },
+  base:     { name:'Base', sub:'EVM', type:'evm', status:'soon', color:'#0052ff', chainId:'0x2105', symbol:'ETH' },
+  bitcoin:  { name:'Bitcoin', sub:'Ordinals · Xverse', type:'utxo', status:'soon', color:'#f7931a', symbol:'BTC', wallet:'Xverse' },
+  bsv:      { name:'BSV', sub:'1Sat Ordinals · Xverse', type:'utxo', status:'soon', color:'#eab300', symbol:'BSV', wallet:'Xverse' },
+};
+let activeChain = 'wattx';
+
 const $=id=>document.getElementById(id);
 const wtx=sat=>(Number(sat)/1e8).toLocaleString(undefined,{maximumFractionDigits:4});
 const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'';
@@ -288,16 +346,17 @@ function getRead(){
   return readProvider;
 }
 
-// Force the wallet onto WATTx (add it if missing). Returns true if on WATTx.
+// Try to switch to WATTx. If the wallet doesn't have WATTx (4902), throw a
+// tagged error so the caller can show the "Add WATTx" popup.
 async function ensureWattx(){
   if(!window.ethereum) return false;
   let cur = await window.ethereum.request({method:'eth_chainId'});
   if(cur===CHAIN.chainId) return true;
   try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN.chainId}]}); }
   catch(e){
-    if(e.code===4902 || (e.data&&e.data.originalError&&e.data.originalError.code===4902)){
-      await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]});
-    } else { throw e; }
+    const code = e.code || (e.data&&e.data.originalError&&e.data.originalError.code);
+    if(code===4902){ const err=new Error('WATTX_NOT_ADDED'); err.notAdded=true; throw err; }
+    throw e;
   }
   cur = await window.ethereum.request({method:'eth_chainId'});
   return cur===CHAIN.chainId;
@@ -312,21 +371,69 @@ function setNetBadge(onWattx){
 // Any write action calls this first — refuses to send on the wrong chain.
 async function requireWattx(){
   if(!signer){ await connect(); if(!signer) return false; }
-  const ok = await ensureWattx().catch(()=>false);
+  let ok=false;
+  try{ ok=await ensureWattx(); }
+  catch(e){ if(e.notAdded){ $('addModal').classList.add('open'); return false; } }
   setNetBadge(ok);
   if(!ok){ toast('Switch your wallet to WATTx (chain 22356) — you are on the wrong network.','err'); }
   return ok;
 }
 
+// ---- network selector ----
+function renderNetMenu(){
+  const evm=Object.entries(CHAINS).filter(([,c])=>c.type==='evm');
+  const utxo=Object.entries(CHAINS).filter(([,c])=>c.type==='utxo');
+  const item=([k,c])=>`<div class="chainitem ${c.status==='soon'?'soon':''} ${k===activeChain?'active':''}" data-chain="${k}">
+      <span class="cdot" style="background:${c.color};box-shadow:0 0 6px ${c.color}"></span>
+      <span class="cn">${c.name}<small>${c.sub}</small></span>
+      <span class="bdg ${c.status}">${c.status==='live'?'Live':'Soon'}</span></div>`;
+  $('netmenu').innerHTML =
+    `<div class="grp">EVM chains</div>${evm.map(item).join('')}`+
+    `<div class="grp">Bitcoin ordinals</div>${utxo.map(item).join('')}`;
+  $('netmenu').querySelectorAll('.chainitem').forEach(el=>el.onclick=()=>selectChain(el.dataset.chain));
+}
+function setActiveNet(k){
+  activeChain=k; const c=CHAINS[k];
+  $('netlabel').textContent=c.name;
+  $('dot').style.background=c.color; $('dot').style.boxShadow='0 0 6px '+c.color;
+}
+async function selectChain(k){
+  $('netmenu').classList.remove('open');
+  const c=CHAINS[k];
+  if(c.status==='soon'){
+    setActiveNet(k);
+    const how = c.type==='utxo'
+      ? `${c.name} ordinals will connect through ${c.wallet}. Trading and inscribing on ${c.name} is coming soon.`
+      : `The marketplace isn't deployed on ${c.name} yet — its contracts are coming soon. Trade on WATTx for now.`;
+    toast(how);
+    return;
+  }
+  setActiveNet(k);
+  await connect();
+}
+$('netbtn').onclick=()=>{ renderNetMenu(); $('netmenu').classList.toggle('open'); };
+document.addEventListener('click',e=>{ if(!e.target.closest('.netsel')) $('netmenu').classList.remove('open'); });
+
+// ---- add-WATTx popup ----
+$('aX').onclick=()=>$('addModal').classList.remove('open');
+$('aGo').onclick=async()=>{
+  try{ await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]});
+    $('addModal').classList.remove('open'); toast('WATTx added — connecting…','ok'); await connect();
+  }catch(e){ toast((e.shortMessage||e.message||'Could not add WATTx').slice(0,120),'err'); }
+};
+
 async function connect(){
-  if(!window.ethereum){ toast('Install a wallet (MetaMask or Rabby) to trade on WATTx.','err'); return; }
+  if(!window.ethereum){ toast('Install an EVM wallet (MetaMask or Rabby) to use WATTx.','err'); return; }
   provider=new ethers.BrowserProvider(window.ethereum);
-  const ok = await ensureWattx().catch(()=>false);
+  // is WATTx already in the wallet? if the switch fails as 4902, offer the add popup
+  let ok=false;
+  try{ ok=await ensureWattx(); }
+  catch(e){ if(e.notAdded){ $('addModal').classList.add('open'); return; } } // user adds WATTx via the popup, then connects
   setNetBadge(ok);
   await provider.send('eth_requestAccounts',[]);
   signer=await provider.getSigner(); me=await signer.getAddress();
   $('connect').textContent=short(me); $('connect').classList.add('on');
-  if(!ok) toast('Connected — now switch your wallet to WATTx to mint or trade.','err');
+  if(!ok) toast('Connected — switch your wallet to WATTx to mint or trade.','err');
   load();
 }
 if(window.ethereum&&window.ethereum.on){ window.ethereum.on('chainChanged',()=>{ if(window.ethereum.chainId) setNetBadge(window.ethereum.chainId===CHAIN.chainId); }); }
@@ -562,7 +669,8 @@ document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySe
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
 $('search').oninput=()=>render();
 $('connect').onclick=connect;
-[$('detail'),$('listModal'),$('createModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
+[$('detail'),$('listModal'),$('createModal'),$('addModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
+setActiveNet('wattx'); renderNetMenu();
 window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>location.reload());
 
 // try a read on load (works if opened over http / with wallet); otherwise prompt connect
