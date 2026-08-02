@@ -288,17 +288,48 @@ function getRead(){
   return readProvider;
 }
 
-async function connect(){
-  if(!window.ethereum){ toast('Install MetaMask to trade on WATTx.','err'); return; }
-  provider=new ethers.BrowserProvider(window.ethereum);
+// Force the wallet onto WATTx (add it if missing). Returns true if on WATTx.
+async function ensureWattx(){
+  if(!window.ethereum) return false;
+  let cur = await window.ethereum.request({method:'eth_chainId'});
+  if(cur===CHAIN.chainId) return true;
   try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN.chainId}]}); }
-  catch(e){ if(e.code===4902) await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]}); }
+  catch(e){
+    if(e.code===4902 || (e.data&&e.data.originalError&&e.data.originalError.code===4902)){
+      await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]});
+    } else { throw e; }
+  }
+  cur = await window.ethereum.request({method:'eth_chainId'});
+  return cur===CHAIN.chainId;
+}
+
+function setNetBadge(onWattx){
+  $('dot').className = 'dot'+(onWattx?' up':'');
+  $('netlabel').textContent = onWattx ? 'WATTx' : 'Wrong network';
+  $('netlabel').style.color = onWattx ? '' : 'var(--hot)';
+}
+
+// Any write action calls this first — refuses to send on the wrong chain.
+async function requireWattx(){
+  if(!signer){ await connect(); if(!signer) return false; }
+  const ok = await ensureWattx().catch(()=>false);
+  setNetBadge(ok);
+  if(!ok){ toast('Switch your wallet to WATTx (chain 22356) — you are on the wrong network.','err'); }
+  return ok;
+}
+
+async function connect(){
+  if(!window.ethereum){ toast('Install a wallet (MetaMask or Rabby) to trade on WATTx.','err'); return; }
+  provider=new ethers.BrowserProvider(window.ethereum);
+  const ok = await ensureWattx().catch(()=>false);
+  setNetBadge(ok);
   await provider.send('eth_requestAccounts',[]);
   signer=await provider.getSigner(); me=await signer.getAddress();
   $('connect').textContent=short(me); $('connect').classList.add('on');
-  $('dot').classList.add('up');
+  if(!ok) toast('Connected — now switch your wallet to WATTx to mint or trade.','err');
   load();
 }
+if(window.ethereum&&window.ethereum.on){ window.ethereum.on('chainChanged',()=>{ if(window.ethereum.chainId) setNetBadge(window.ethereum.chainId===CHAIN.chainId); }); }
 
 async function load(){
   const p=getRead();
@@ -381,7 +412,7 @@ function openDetail(i){
 }
 async function quickBuy(i){ selected=i; await doBuy(); }
 async function doBuy(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!(await requireWattx())) return;
   if(!selected) return;
   try{ toast('Confirm the purchase in your wallet…');
     const c=new ethers.Contract(MARKET,ABI,signer);
@@ -392,7 +423,7 @@ async function doBuy(){
 }
 $('dBuy').onclick=doBuy;
 $('dOffer').onclick=async()=>{
-  if(!signer){ await connect(); return; } if(!selected) return;
+  if(!(await requireWattx())) return; if(!selected) return;
   const v=prompt('Offer amount in WTX'); if(!v) return;
   try{ const c=new ethers.Contract(MARKET,ABI,signer);
     const tx=await c.makeOffer(selected.collection,selected.tokenId,{value:BigInt(Math.floor(+v*1e8))});
@@ -471,6 +502,7 @@ $('cGo').onclick=async()=>{
   const name=$('cName').value.trim(), image=$('cImage').value.trim(), desc=$('cDesc').value.trim();
   const collSel=$('cColl').value, listPrice=$('cList').value.trim();
   if(!name||!image) return toast('Add a name and image URL','err');
+  if(!(await requireWattx())) return;
   const coll = collSel==='DEFAULT' ? DEFAULT_COLLECTION : collSel;
   // on-chain metadata as a data: URI (no external hosting needed)
   const meta = { name, description:desc, image };
@@ -502,6 +534,7 @@ $('cNewColl').onclick=async()=>{
   const nm=prompt('Collection name (e.g. "Voltage Beasts")'); if(!nm) return;
   const sym=prompt('Symbol (e.g. VBEAST)','WNFT')||'WNFT';
   const roy=prompt('Creator royalty % on secondary sales (0-10)','5')||'0';
+  if(!(await requireWattx())) return;
   try{ toast('Deploying your collection…');
     const f=new ethers.Contract(FACTORY, FACTORY_ABI, signer);
     const rc=await (await f.createCollection(nm, sym, Math.floor(+roy*100), true)).wait();
@@ -516,6 +549,7 @@ $('lX').onclick=()=>$('listModal').classList.remove('open');
 $('mGo').onclick=async()=>{
   const coll=$('mColl').value.trim(),id=$('mId').value.trim(),price=$('mPrice').value.trim();
   if(!coll||!id||!price) return toast('Fill in all fields','err');
+  if(!(await requireWattx())) return;
   try{ toast('Approve the marketplace in your wallet…');
     const nft=new ethers.Contract(coll,ERC721,signer); await (await nft.approve(MARKET,id)).wait();
     toast('Now confirm the listing…');
