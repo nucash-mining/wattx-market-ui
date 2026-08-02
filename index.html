@@ -174,7 +174,10 @@
   <div class="chip" data-filter="lowhigh">Price ↑</div>
   <div class="chip" data-filter="highlow">Price ↓</div>
   <div class="chip" data-filter="new">Newest</div>
-  <div class="right"><button class="listbtn" id="listBtn">+ List an NFT</button></div>
+  <div class="right">
+    <button class="connect" id="createBtn" style="padding:.5rem .95rem">✦ Create NFT</button>
+    <button class="listbtn" id="listBtn">+ List an NFT</button>
+  </div>
 </div>
 
 <main class="grid" id="grid"></main>
@@ -201,6 +204,35 @@
   </div>
 </div>
 
+<!-- create / mint -->
+<div class="modal" id="createModal">
+  <div class="box form" style="width:min(560px,95vw)">
+    <button class="x" id="cX">✕</button>
+    <h3>Create an NFT</h3>
+    <p class="sub">Mint a new NFT on WATTx. Metadata is written on-chain — paste an image URL (or an ipfs:// / data: URI) and it's yours in one transaction.</p>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:1rem;align-items:start;margin-top:.6rem">
+      <div>
+        <div id="cPreview" style="width:120px;height:120px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--line2);font-family:'Chakra Petch';font-size:2rem;overflow:hidden">◈</div>
+      </div>
+      <div>
+        <label>Name</label><input id="cName" placeholder="Bolt #1" />
+        <label>Image URL</label><input id="cImage" placeholder="https://… or ipfs://…" />
+      </div>
+    </div>
+    <label>Description (optional)</label><input id="cDesc" placeholder="A charged little bolt." />
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div><label>Collection</label>
+        <select id="cColl" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:.65rem;font-size:.9rem">
+          <option value="DEFAULT">WATTx NFTs (shared, open)</option>
+        </select>
+      </div>
+      <div><label>List for sale? (WTX, optional)</label><input id="cList" placeholder="e.g. 100 — blank = just mint" /></div>
+    </div>
+    <button class="go" id="cGo">Mint NFT</button>
+    <p class="sub" style="margin-top:.7rem">Want your own named collection? <a id="cNewColl" style="color:var(--arc);cursor:pointer">Create a collection →</a></p>
+  </div>
+</div>
+
 <!-- list -->
 <div class="modal" id="listModal">
   <div class="box form">
@@ -218,6 +250,8 @@
 
 <script>
 const MARKET = '0xecaa2cd631fe0611c09ef6fc58573faad0f31dd2';
+const FACTORY = '0x62e724c418aab09942c333097a9320cfe4925c83';
+const DEFAULT_COLLECTION = '0xa647fc9e0531d7bb8757fca19048b2fc9442b1da'; // "WATTx NFTs", open mint
 const CHAIN = { chainId:'0x5754', chainName:'WATTx', nativeCurrency:{name:'WATTx',symbol:'WTX',decimals:8},
   rpcUrls:['https://rpc-wtx.wattxchange.app'], blockExplorerUrls:['https://wtx-explorer.wattxchange.app'] };
 const READ_RPC = 'https://rpc-wtx.wattxchange.app';
@@ -229,7 +263,8 @@ const ABI = [
   'function list(address collection,uint256 tokenId,uint256 priceSat)',
   'event Listed(address indexed collection,uint256 indexed tokenId,address indexed seller,uint256 price)'
 ];
-const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function symbol() view returns (string)','function tokenURI(uint256) view returns (string)'];
+const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function symbol() view returns (string)','function tokenURI(uint256) view returns (string)','function mint(address to,string uri) returns (uint256)','function openMint() view returns (bool)'];
+const FACTORY_ABI = ['function createCollection(string name,string symbol,uint96 royaltyBps,bool openMint) returns (address)','function collectionsOf(address,uint256) view returns (address)','function collectionsCountOf(address) view returns (uint256)'];
 
 const $=id=>document.getElementById(id);
 const wtx=sat=>(Number(sat)/1e8).toLocaleString(undefined,{maximumFractionDigits:4});
@@ -310,8 +345,7 @@ function render(){
   $('sFloor').textContent=items.length? wtx(items.reduce((m,i)=>i.price<m?i.price:m,items[0].price))+' WTX':'—';
 
   const g=$('grid');
-  if(!list.length){ g.innerHTML=emptyHTML(view==='mine'?'You have no listings':'No NFTs listed yet',
-      view==='mine'?'List an NFT to see it here.':'Be the first to list on WATTx.',false); return; }
+  if(!list.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>${view==='mine'?'You have no listings':'No NFTs listed yet'}</h3><p>${view==='mine'?'Create an NFT and list it to see it here.':'Mint the first NFT on WATTx — it takes one transaction.'}</p><button onclick="document.getElementById('createBtn').click()">✦ Create an NFT</button></div>`; return; }
   g.innerHTML=list.map((i,idx)=>`
     <div class="nft" data-i="${idx}">
       <div class="art">${i.image?`<img src="${i.image}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="ph" style="display:none">◈</div>`:'<div class="ph">◈</div>'}
@@ -361,6 +395,62 @@ $('dOffer').onclick=async()=>{
 };
 $('dX').onclick=()=>$('detail').classList.remove('open');
 
+// ---- create / mint ----
+$('createBtn').onclick=async()=>{ if(!signer){ await connect(); if(!signer) return; } await loadMyCollections(); $('createModal').classList.add('open'); };
+$('cX').onclick=()=>$('createModal').classList.remove('open');
+$('cImage').oninput=()=>{ const u=ipfs($('cImage').value.trim()); $('cPreview').innerHTML = u?`<img src="${u}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='◈'"/>`:'◈'; };
+
+async function loadMyCollections(){
+  const sel=$('cColl'); sel.innerHTML='<option value="DEFAULT">WATTx NFTs (shared, open)</option>';
+  if(!me) return;
+  try{ const f=new ethers.Contract(FACTORY,FACTORY_ABI,getRead());
+    const n=Number(await f.collectionsCountOf(me));
+    for(let i=0;i<n;i++){ const addr=await f.collectionsOf(me,i);
+      let nm=short(addr); try{ nm=await new ethers.Contract(addr,ERC721,getRead()).name(); }catch{}
+      const o=document.createElement('option'); o.value=addr; o.textContent=nm+' (yours)'; sel.appendChild(o); }
+  }catch{}
+}
+
+$('cGo').onclick=async()=>{
+  const name=$('cName').value.trim(), image=$('cImage').value.trim(), desc=$('cDesc').value.trim();
+  const collSel=$('cColl').value, listPrice=$('cList').value.trim();
+  if(!name||!image) return toast('Add a name and image URL','err');
+  const coll = collSel==='DEFAULT' ? DEFAULT_COLLECTION : collSel;
+  // on-chain metadata as a data: URI (no external hosting needed)
+  const meta = { name, description:desc, image };
+  const uri = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+  try{
+    toast('Minting your NFT…');
+    const nft=new ethers.Contract(coll, ERC721, signer);
+    const rc=await (await nft.mint(me, uri)).wait();
+    // recover the new tokenId from the Minted/Transfer event
+    let tokenId=null;
+    for(const lg of rc.logs){ try{ const p=nft.interface.parseLog(lg); if(p&&(p.name==='Minted'||p.name==='Transfer')){ tokenId=(p.args.tokenId??p.args[2]).toString(); break; } }catch{} }
+    toast('Minted '+name+' ⚡','ok');
+    if(listPrice && tokenId!=null){
+      toast('Approve the marketplace to list…');
+      await (await nft.approve(MARKET, tokenId)).wait();
+      const m=new ethers.Contract(MARKET, ABI, signer);
+      await (await m.list(coll, tokenId, BigInt(Math.floor(+listPrice*1e8)))).wait();
+      toast('Minted & listed for '+listPrice+' WTX ⚡','ok');
+    }
+    $('createModal').classList.remove('open'); load();
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,140),'err'); }
+};
+
+$('cNewColl').onclick=async()=>{
+  const nm=prompt('Collection name (e.g. "Voltage Beasts")'); if(!nm) return;
+  const sym=prompt('Symbol (e.g. VBEAST)','WNFT')||'WNFT';
+  const roy=prompt('Creator royalty % on secondary sales (0-10)','5')||'0';
+  try{ toast('Deploying your collection…');
+    const f=new ethers.Contract(FACTORY, FACTORY_ABI, signer);
+    const rc=await (await f.createCollection(nm, sym, Math.floor(+roy*100), true)).wait();
+    toast('Collection "'+nm+'" created ⚡','ok'); await loadMyCollections();
+    // select the newest
+    const sel=$('cColl'); sel.selectedIndex=sel.options.length-1;
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,140),'err'); }
+};
+
 $('listBtn').onclick=()=>{ if(!signer){ connect(); return; } $('listModal').classList.add('open'); };
 $('lX').onclick=()=>$('listModal').classList.remove('open');
 $('mGo').onclick=async()=>{
@@ -378,7 +468,7 @@ document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySe
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
 $('search').oninput=()=>render();
 $('connect').onclick=connect;
-[$('detail'),$('listModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
+[$('detail'),$('listModal'),$('createModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
 window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>location.reload());
 
 // try a read on load (works if opened over http / with wallet); otherwise prompt connect
