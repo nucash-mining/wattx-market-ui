@@ -216,7 +216,13 @@
       </div>
       <div>
         <label>Name</label><input id="cName" placeholder="Bolt #1" />
-        <label>Image URL</label><input id="cImage" placeholder="https://… or ipfs://…" />
+        <label>Image</label>
+        <div style="display:flex;gap:.5rem">
+          <input id="cImage" placeholder="paste a URL, or upload a file →" style="flex:1" />
+          <button type="button" id="cUpload" style="background:var(--arc);color:#fff;font-weight:600;border-radius:9px;padding:0 .9rem;white-space:nowrap">Upload file</button>
+          <input type="file" id="cFile" accept="image/*" hidden />
+        </div>
+        <div id="cSize" style="font-size:.7rem;color:var(--faint);margin-top:.35rem;line-height:1.5"></div>
       </div>
     </div>
     <label>Description (optional)</label><input id="cDesc" placeholder="A charged little bolt." />
@@ -398,7 +404,57 @@ $('dX').onclick=()=>$('detail').classList.remove('open');
 // ---- create / mint ----
 $('createBtn').onclick=async()=>{ if(!signer){ await connect(); if(!signer) return; } await loadMyCollections(); $('createModal').classList.add('open'); };
 $('cX').onclick=()=>$('createModal').classList.remove('open');
-$('cImage').oninput=()=>{ const u=ipfs($('cImage').value.trim()); $('cPreview').innerHTML = u?`<img src="${u}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='◈'"/>`:'◈'; };
+$('cImage').oninput=()=>{ const u=ipfs($('cImage').value.trim()); $('cPreview').innerHTML = u?`<img src="${u}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='◈'"/>`:'◈'; if(!$('cImage').value.startsWith('data:')) $('cSize').textContent=''; };
+
+// On-chain inscription limit: WATTx EVM block gas = 40M, storage ~20k gas/32B.
+// Keep the full tokenURI (base64 JSON incl. the image) under ~48KB → ~30M gas.
+const ONCHAIN_MAX = 48000;         // final tokenURI string budget
+const IMG_TARGET  = 34000;         // image data-URL budget (leaves room for JSON + outer base64)
+
+$('cUpload').onclick=()=>$('cFile').click();
+$('cFile').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  $('cSize').textContent='Compressing to fit on-chain…';
+  try{
+    const dataUrl=await compressToFit(f, IMG_TARGET);
+    $('cImage').value=dataUrl;
+    $('cPreview').innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover"/>`;
+    const kb=(dataUrl.length/1024).toFixed(1);
+    $('cSize').innerHTML=`✔ Inscribed on-chain · <b style="color:var(--live)">${kb} KB</b> <span style="color:var(--faint)">(image stored fully on the WATTx chain — auto-fit to the ordinal size limit)</span>`;
+  }catch(err){ $('cSize').innerHTML=`<span style="color:var(--hot)">${err.message}</span>`; }
+};
+
+// Draw the image to a canvas at decreasing size/quality until its data URL fits.
+function compressToFit(file, maxLen){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const dims=[512,420,340,280,220,180,144,112,88,64];
+      const quals=[0.82,0.68,0.55,0.42,0.3,0.2,0.12];
+      const cv=document.createElement('canvas'), ctx=cv.getContext('2d');
+      // prefer webp (smaller); fall back to jpeg
+      const type = cv.toDataURL('image/webp').startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg';
+      let best=null;
+      for(const d of dims){
+        const scale=Math.min(1, d/Math.max(img.width,img.height));
+        cv.width=Math.max(1,Math.round(img.width*scale));
+        cv.height=Math.max(1,Math.round(img.height*scale));
+        ctx.clearRect(0,0,cv.width,cv.height);
+        ctx.drawImage(img,0,0,cv.width,cv.height);
+        for(const q of quals){
+          const url=cv.toDataURL(type,q);
+          best=url;
+          if(url.length<=maxLen){ resolve(url); return; }
+        }
+      }
+      // smallest we could make it still too big
+      if(best && best.length<=maxLen*1.15){ resolve(best); return; }
+      reject(new Error('Image too complex to fit the on-chain limit — try a simpler / smaller image, or paste a URL instead.'));
+    };
+    img.onerror=()=>reject(new Error('Could not read that image file.'));
+    const r=new FileReader(); r.onload=()=>img.src=r.result; r.onerror=()=>reject(new Error('File read failed.')); r.readAsDataURL(file);
+  });
+}
 
 async function loadMyCollections(){
   const sel=$('cColl'); sel.innerHTML='<option value="DEFAULT">WATTx NFTs (shared, open)</option>';
@@ -419,6 +475,10 @@ $('cGo').onclick=async()=>{
   // on-chain metadata as a data: URI (no external hosting needed)
   const meta = { name, description:desc, image };
   const uri = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(JSON.stringify(meta))));
+  // if the image is inscribed (data URI), the whole tokenURI is stored on-chain — enforce the gas/size limit
+  if(image.startsWith('data:') && uri.length > ONCHAIN_MAX){
+    return toast('Inscription too large for the WATTx block gas limit ('+(uri.length/1024).toFixed(0)+'KB). Re-upload — it will auto-compress smaller.','err');
+  }
   try{
     toast('Minting your NFT…');
     const nft=new ethers.Contract(coll, ERC721, signer);
