@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WATTx Grid — NFT Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --void:#05060a; --grid:#0a1030; --panel:#0c1226e6;
+    --volt:#ffd400; --volt-dim:#b39600; --arc:#2e6bff; --arc-soft:#2e6bff33;
+    --wire:#1a2550; --ink:#eaf0ff; --ghost:#7d8cc0; --live:#38e08a; --hot:#ff5470;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--void);color:var(--ink);
+    font-family:'Chakra Petch',system-ui,sans-serif;overflow:hidden}
+  canvas#grid{position:fixed;inset:0;z-index:0;display:block}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* ---- top HUD ---- */
+  header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;
+    justify-content:space-between;padding:1rem 1.4rem;
+    background:linear-gradient(180deg,#05060af2,#05060a00)}
+  .brand{display:flex;align-items:center;gap:.7rem}
+  .plug{width:34px;height:34px;filter:drop-shadow(0 0 6px var(--volt))}
+  .brand h1{font-size:1.15rem;font-weight:700;letter-spacing:.04em}
+  .brand h1 b{color:var(--volt);font-weight:700}
+  .brand .sub{font-size:.6rem;letter-spacing:.42em;text-transform:uppercase;color:var(--ghost);margin-top:2px}
+  .status{display:flex;align-items:center;gap:1.2rem}
+  .gauge{text-align:right;line-height:1.1}
+  .gauge .v{font-family:'JetBrains Mono';font-size:.95rem;color:var(--volt)}
+  .gauge .l{font-size:.56rem;letter-spacing:.28em;text-transform:uppercase;color:var(--ghost)}
+  button{font-family:'Chakra Petch';cursor:pointer;border:none;font-weight:600;letter-spacing:.03em}
+  .connect{background:var(--volt);color:#0b0d18;padding:.62rem 1.15rem;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+    text-transform:uppercase;font-size:.8rem}
+  .connect:hover{box-shadow:0 0 18px var(--volt)}
+  .connect.wired{background:transparent;color:var(--volt);outline:1px solid var(--volt)}
+
+  /* ---- left rail: grid feed ---- */
+  #rail{position:fixed;top:74px;left:0;bottom:0;width:340px;z-index:9;
+    padding:1rem 1rem 2rem;overflow-y:auto;
+    background:linear-gradient(90deg,#070a18f2,#070a1800);scrollbar-width:thin;scrollbar-color:var(--wire) transparent}
+  .rail-h{display:flex;align-items:center;justify-content:space-between;margin:.2rem .2rem 1rem}
+  .rail-h span{font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ghost)}
+  .rail-h .count{color:var(--arc)}
+  .cell{position:relative;margin-bottom:.8rem;padding:.85rem;background:var(--panel);
+    border:1px solid var(--wire);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+    cursor:pointer;transition:border-color .2s, transform .15s}
+  .cell:hover{border-color:var(--arc);transform:translateX(3px)}
+  .cell.sel{border-color:var(--volt)}
+  .cell .top{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+  .cell .name{font-weight:600;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cell .id{font-family:'JetBrains Mono';font-size:.62rem;color:var(--ghost)}
+  .cell .watt{font-family:'JetBrains Mono';margin-top:.5rem;font-size:1.05rem;color:var(--volt);
+    display:flex;align-items:baseline;gap:.3rem}
+  .cell .watt small{font-size:.6rem;color:var(--volt-dim);letter-spacing:.1em}
+  .cell .arcbar{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--arc);box-shadow:0 0 8px var(--arc)}
+
+  /* ---- detail panel ---- */
+  #detail{position:fixed;top:50%;right:-460px;transform:translateY(-50%);z-index:11;width:420px;
+    padding:1.5rem;background:var(--panel);border:1px solid var(--arc);
+    clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+    transition:right .35s cubic-bezier(.2,.8,.2,1);backdrop-filter:blur(8px)}
+  #detail.open{right:1.4rem}
+  #detail .x{position:absolute;top:.8rem;right:1rem;background:none;color:var(--ghost);font-size:1.1rem}
+  #detail .dtag{font-size:.6rem;letter-spacing:.34em;text-transform:uppercase;color:var(--arc)}
+  #detail h2{font-size:1.5rem;margin:.3rem 0 .2rem;letter-spacing:.02em}
+  #detail .col{font-family:'JetBrains Mono';font-size:.7rem;color:var(--ghost);word-break:break-all}
+  #detail .price{font-family:'JetBrains Mono';font-size:2rem;color:var(--volt);margin:1.1rem 0 .2rem;
+    text-shadow:0 0 20px #ffd40055}
+  #detail .price small{font-size:.7rem;color:var(--volt-dim);letter-spacing:.15em}
+  #detail .row{display:flex;gap:.6rem;margin-top:1.1rem}
+  #detail .buy{flex:1;background:var(--volt);color:#0b0d18;padding:.8rem;text-transform:uppercase;font-size:.85rem;
+    clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+  #detail .buy:hover{box-shadow:0 0 22px var(--volt)}
+  #detail .offer{padding:.8rem 1rem;background:transparent;color:var(--arc);outline:1px solid var(--arc);text-transform:uppercase;font-size:.85rem}
+  #detail .meta{margin-top:1rem;font-size:.7rem;color:var(--ghost);line-height:1.7}
+
+  /* ---- bottom console ---- */
+  #console{position:fixed;bottom:0;left:340px;right:0;z-index:8;padding:.5rem 1.4rem;
+    font-family:'JetBrains Mono';font-size:.68rem;color:var(--ghost);
+    background:linear-gradient(0deg,#05060af2,#05060a00);display:flex;gap:1.4rem;align-items:center}
+  #console .k{color:var(--arc)}
+  #console b{color:var(--volt)}
+
+  /* ---- list drawer ---- */
+  #listBtn{position:fixed;bottom:1rem;right:1.4rem;z-index:9;background:transparent;color:var(--volt);
+    outline:1px solid var(--volt-dim);padding:.55rem .9rem;text-transform:uppercase;font-size:.72rem}
+  #listBtn:hover{outline-color:var(--volt);box-shadow:0 0 14px #ffd40044}
+
+  /* ---- toast ---- */
+  #toast{position:fixed;bottom:3rem;left:50%;transform:translateX(-50%) translateY(20px);z-index:20;
+    padding:.7rem 1.2rem;background:#0c1226;border:1px solid var(--arc);font-size:.8rem;
+    opacity:0;transition:.3s;pointer-events:none;max-width:80vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{border-color:var(--hot)}
+
+  .empty{text-align:center;color:var(--ghost);font-size:.8rem;margin-top:3rem;line-height:1.9}
+  .empty .big{display:block;font-size:2.2rem;color:var(--wire);margin-bottom:.5rem}
+
+  @media (max-width:720px){
+    #rail{width:100%;top:auto;bottom:0;height:44vh;background:#070a18f5}
+    #detail{width:calc(100% - 2rem)}
+    #console{display:none} #detail.open{right:1rem}
+  }
+  a{color:var(--arc)}
+  .modal{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:#05060ad9}
+  .modal.open{display:flex}
+  .modal .box{width:min(440px,92vw);padding:1.6rem;background:var(--panel);border:1px solid var(--volt)}
+  .modal h3{margin-bottom:1rem;letter-spacing:.04em}
+  .modal label{display:block;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ghost);margin:.8rem 0 .3rem}
+  .modal input{width:100%;background:#0a0e1e;border:1px solid var(--wire);color:var(--ink);padding:.6rem;font-family:'JetBrains Mono';font-size:.85rem}
+  .modal .go{margin-top:1.2rem;width:100%;background:var(--volt);color:#0b0d18;padding:.75rem;text-transform:uppercase}
+</style>
+</head>
+<body>
+<canvas id="grid"></canvas>
+
+<header>
+  <div class="brand">
+    <svg class="plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--volt)">
+      <path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5V8zM12 16v6"/>
+    </svg>
+    <div>
+      <h1>WATTx <b>GRID</b> MARKET</h1>
+      <div class="sub">energized asset exchange</div>
+    </div>
+  </div>
+  <div class="status">
+    <div class="gauge"><div class="v mono" id="netv">— V</div><div class="l">grid status</div></div>
+    <div class="gauge"><div class="v mono" id="blk">#—</div><div class="l">block</div></div>
+    <button class="connect" id="connect">Connect grid</button>
+  </div>
+</header>
+
+<aside id="rail">
+  <div class="rail-h"><span>Live cells</span><span class="count mono" id="cellcount">0</span></div>
+  <div id="feed">
+    <div class="empty"><span class="big mono">⚡</span>Connect to the grid<br />to energize the market feed.</div>
+  </div>
+</aside>
+
+<div id="detail">
+  <button class="x" id="closeDetail">✕</button>
+  <div class="dtag">voltage cell</div>
+  <h2 id="dName">—</h2>
+  <div class="col mono" id="dColl">—</div>
+  <div class="price mono" id="dPrice">— <small>WTX</small></div>
+  <div class="row">
+    <button class="buy" id="dBuy">Discharge · Buy</button>
+    <button class="offer" id="dOffer">Offer</button>
+  </div>
+  <div class="meta" id="dMeta"></div>
+</div>
+
+<div id="console">
+  <span><span class="k">MARKET</span> <b id="cAddr">0xecaa…1dd2</b></span>
+  <span><span class="k">CHAIN</span> WATTx <b>22356</b></span>
+  <span><span class="k">FEE</span> <b id="cFee">2.0%</b></span>
+  <span><span class="k">WALLET</span> <b id="cWallet">not connected</b></span>
+</div>
+<button id="listBtn">+ Energize a cell (list)</button>
+
+<div class="modal" id="listModal">
+  <div class="box">
+    <h3>Energize a cell — list an NFT</h3>
+    <label>Collection address</label><input id="mColl" placeholder="0x…" />
+    <label>Token ID</label><input id="mId" class="mono" placeholder="1" />
+    <label>Price (WTX)</label><input id="mPrice" class="mono" placeholder="100" />
+    <button class="go" id="mGo">Approve &amp; list</button>
+    <p style="margin-top:.8rem;font-size:.66rem;color:var(--ghost)">Two transactions: approve the market on your NFT, then list it. Price is charged in satoshis on-chain (1 WTX = 1e8).</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+/* ===================== 3D POWER GRID ===================== */
+const VOID = 0x05060a, ARC = 0x2e6bff, VOLT = 0xffd400;
+const canvas = document.getElementById('grid');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(VOID, 0.055);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 3.4, 9);
+
+// receding grid floor
+const grid = new THREE.GridHelper(120, 120, ARC, 0x101838);
+grid.position.y = -0.01; scene.add(grid);
+const gridGlow = new THREE.GridHelper(120, 24, VOLT, 0x000000);
+gridGlow.material.opacity = 0.22; gridGlow.material.transparent = true; scene.add(gridGlow);
+
+// voltage cells (hexagonal prisms) hold market items
+const cells = [];
+const cellGeo = new THREE.CylinderGeometry(0.9, 0.9, 1.5, 6, 1, true);
+const edgeGeo = new THREE.EdgesGeometry(new THREE.CylinderGeometry(0.92,0.92,1.55,6));
+function makeCell(x, z, energized) {
+  const g = new THREE.Group();
+  const shell = new THREE.Mesh(cellGeo, new THREE.MeshBasicMaterial({ color: ARC, transparent:true, opacity:0.06, side:THREE.DoubleSide }));
+  const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: energized?VOLT:ARC }));
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34,0), new THREE.MeshBasicMaterial({ color: energized?VOLT:ARC }));
+  core.position.y = 0; g.add(shell, edges, core);
+  g.position.set(x, 0.9, z); g.userData = { core, edges, spin: 0.2+Math.random()*0.4, energized };
+  scene.add(g); cells.push(g); return g;
+}
+// ambient field of dim cells for depth
+for (let i=0;i<26;i++){ const a=Math.random()*Math.PI*2, r=6+Math.random()*22; makeCell(Math.cos(a)*r, -Math.abs(Math.sin(a)*r)-2, false); }
+
+// electron particles flowing along the grid
+const pCount = 300, pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(pCount*3);
+for (let i=0;i<pCount;i++){ pPos[i*3]=(Math.random()-0.5)*80; pPos[i*3+1]=Math.random()*0.2; pPos[i*3+2]=(Math.random()-0.5)*80; }
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: VOLT, size:0.06, transparent:true, opacity:0.8 }));
+scene.add(particles);
+
+// bloom
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.9, 0.5, 0.1);
+composer.addPass(bloom);
+
+let mx=0, my=0;
+addEventListener('mousemove', e=>{ mx=(e.clientX/innerWidth-0.5); my=(e.clientY/innerHeight-0.5); });
+function resize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); }
+addEventListener('resize', resize); resize();
+
+const clock = new THREE.Clock();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  if(!reduce){
+    cells.forEach((c,i)=>{ c.userData.core.rotation.y += 0.01*c.userData.spin; c.userData.core.rotation.x += 0.006*c.userData.spin;
+      c.position.y = 0.9 + Math.sin(t*0.8+i)*0.12; });
+    const pos = particles.geometry.attributes.position.array;
+    for(let i=0;i<pCount;i++){ pos[i*3+2]+=0.06; if(pos[i*3+2]>40) pos[i*3+2]=-40; }
+    particles.geometry.attributes.position.needsUpdate = true;
+    camera.position.x += (mx*2.4 - camera.position.x)*0.03;
+    camera.position.y += (3.4 - my*1.5 - camera.position.y)*0.03;
+    camera.lookAt(0,0.8,0);
+  }
+  composer.render();
+}
+animate();
+
+// promote a feed item to an energized cell near the camera
+const liveCells = [];
+function energizeCells(n){
+  liveCells.forEach(c=>scene.remove(c)); liveCells.length=0;
+  const span = Math.max(n,1);
+  for(let i=0;i<n;i++){ const x=(i-(span-1)/2)*2.6; const c=makeCell(x, 1.5, true); liveCells.push(c); cells.pop(); scene.add(c); }
+}
+
+/* ===================== MARKET CONTRACT ===================== */
+const MARKET = '0xecaa2cd631fe0611c09ef6fc58573faad0f31dd2';
+const CHAIN = { chainId:'0x5754', chainName:'WATTx', nativeCurrency:{name:'WATTx',symbol:'WTX',decimals:8},
+  rpcUrls:['http://rpc-wtx.wattxchange.app:8545'], blockExplorerUrls:['https://wtx-explorer.wattxchange.app'] };
+const SAT = 100000000n; // 1 WTX = 1e8 (WATTx satoshi units)
+const ABI = [
+  'function feeBps() view returns (uint16)',
+  'function listings(address,uint256) view returns (address seller,uint256 price,bool active)',
+  'function buy(address collection,uint256 tokenId) payable',
+  'function makeOffer(address collection,uint256 tokenId) payable',
+  'function list(address collection,uint256 tokenId,uint256 priceSat)',
+  'event Listed(address indexed collection,uint256 indexed tokenId,address indexed seller,uint256 price)'
+];
+const ERC721 = ['function approve(address,uint256)','function ownerOf(uint256) view returns (address)','function name() view returns (string)','function tokenURI(uint256) view returns (string)'];
+
+let provider, signer, me;
+const $ = id=>document.getElementById(id);
+const wtx = sat => (Number(sat)/1e8).toLocaleString(undefined,{maximumFractionDigits:4});
+function toast(msg, err){ const t=$('toast'); t.textContent=msg; t.className='show'+(err?' err':''); setTimeout(()=>t.className='',3800); }
+
+let listingsData = [];
+
+async function connect(){
+  if(!window.ethereum){ toast('Install MetaMask to enter the grid.', true); return; }
+  provider = new ethers.BrowserProvider(window.ethereum);
+  try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN.chainId}]}); }
+  catch(e){ if(e.code===4902) await window.ethereum.request({method:'wallet_addEthereumChain',params:[CHAIN]}); }
+  await provider.send('eth_requestAccounts',[]);
+  signer = await provider.getSigner(); me = await signer.getAddress();
+  $('connect').textContent = me.slice(0,6)+'…'+me.slice(-4); $('connect').classList.add('wired');
+  $('cWallet').textContent = me.slice(0,6)+'…'+me.slice(-4);
+  refresh();
+}
+
+async function refresh(){
+  try{
+    const net = await provider.getNetwork();
+    const blk = await provider.getBlockNumber();
+    $('netv').textContent = '400 V'; $('blk').textContent = '#'+blk;
+    const c = new ethers.Contract(MARKET, ABI, provider);
+    const fee = await c.feeBps(); $('cFee').textContent = (Number(fee)/100).toFixed(1)+'%';
+    // discover listings from Listed events (last ~50k blocks)
+    const from = Math.max(0, blk-50000);
+    const logs = await c.queryFilter('Listed', from, blk);
+    const seen = new Map();
+    for(const l of logs){ const key=l.args.collection+'/'+l.args.tokenId; seen.set(key, l.args); }
+    const rows = [];
+    for(const [key,a] of seen){
+      const ls = await c.listings(a.collection, a.tokenId);
+      if(ls.active){
+        let name = 'NFT #'+a.tokenId;
+        try{ const nft=new ethers.Contract(a.collection,ERC721,provider); name=(await nft.name())+' #'+a.tokenId; }catch{}
+        rows.push({ collection:a.collection, tokenId:a.tokenId.toString(), price:ls.price, seller:ls.seller, name });
+      }
+    }
+    listingsData = rows; renderFeed(); energizeCells(Math.min(rows.length,7));
+  }catch(e){ console.error(e); toast('Grid read failed: '+(e.shortMessage||e.message), true); }
+}
+
+function renderFeed(){
+  $('cellcount').textContent = listingsData.length; $('cWallet');
+  const feed = $('feed');
+  if(!listingsData.length){ feed.innerHTML='<div class="empty"><span class="big mono">◇</span>No energized cells.<br />Be the first to list.</div>'; return; }
+  feed.innerHTML = listingsData.map((r,i)=>`
+    <div class="cell" data-i="${i}">
+      <div class="arcbar"></div>
+      <div class="top"><span class="name">${r.name}</span><span class="id mono">#${r.tokenId}</span></div>
+      <div class="watt mono">${wtx(r.price)} <small>WTX</small></div>
+    </div>`).join('');
+  feed.querySelectorAll('.cell').forEach(el=>el.onclick=()=>openDetail(+el.dataset.i, el));
+}
+
+let selected = null;
+function openDetail(i, el){
+  document.querySelectorAll('.cell.sel').forEach(c=>c.classList.remove('sel')); el&&el.classList.add('sel');
+  const r = listingsData[i]; selected = r;
+  $('dName').textContent = r.name;
+  $('dColl').textContent = r.collection;
+  $('dPrice').innerHTML = wtx(r.price)+' <small>WTX</small>';
+  $('dMeta').innerHTML = `seller ${r.seller.slice(0,8)}…${r.seller.slice(-6)}<br/>token id ${r.tokenId}`;
+  $('detail').classList.add('open');
+}
+$('closeDetail').onclick = ()=>$('detail').classList.remove('open');
+
+$('dBuy').onclick = async ()=>{
+  if(!signer){ await connect(); return; } if(!selected) return;
+  try{ toast('Discharging cell…');
+    const c = new ethers.Contract(MARKET, ABI, signer);
+    const tx = await c.buy(selected.collection, selected.tokenId, { value: selected.price });
+    await tx.wait(); toast('Acquired ⚡ '+selected.name); $('detail').classList.remove('open'); refresh();
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
+};
+$('dOffer').onclick = async ()=>{
+  if(!signer){ await connect(); return; } if(!selected) return;
+  const v = prompt('Offer amount in WTX'); if(!v) return;
+  try{ const c=new ethers.Contract(MARKET,ABI,signer);
+    const tx=await c.makeOffer(selected.collection, selected.tokenId, { value: BigInt(Math.floor(+v*1e8)) });
+    await tx.wait(); toast('Offer escrowed: '+v+' WTX'); }
+  catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
+};
+
+$('listBtn').onclick = ()=>{ if(!signer){ connect(); return; } $('listModal').classList.add('open'); };
+$('listModal').onclick = e=>{ if(e.target.id==='listModal') e.target.classList.remove('open'); };
+$('mGo').onclick = async ()=>{
+  const coll=$('mColl').value.trim(), id=$('mId').value.trim(), price=$('mPrice').value.trim();
+  if(!coll||!id||!price) return toast('Fill in all fields', true);
+  try{ toast('Approving…');
+    const nft=new ethers.Contract(coll, ERC721, signer);
+    await (await nft.approve(MARKET, id)).wait();
+    toast('Listing…');
+    const c=new ethers.Contract(MARKET, ABI, signer);
+    await (await c.list(coll, id, BigInt(Math.floor(+price*1e8)))).wait();
+    toast('Cell energized ⚡'); $('listModal').classList.remove('open'); refresh();
+  }catch(e){ toast((e.shortMessage||e.message).slice(0,120), true); }
+};
+
+$('connect').onclick = connect;
+window.ethereum && window.ethereum.on && window.ethereum.on('accountsChanged', ()=>location.reload());
+</script>
+</body>
+</html>
