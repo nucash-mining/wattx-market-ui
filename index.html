@@ -219,6 +219,7 @@
   <div class="right">
     <button class="connect" id="createBtn" style="padding:.5rem .95rem">✦ Create NFT</button>
     <button class="listbtn" id="listBtn">+ List an NFT</button>
+    <button class="listbtn" id="inscribeBtn" style="display:none">◈ Inscribe Ordinal</button>
   </div>
 </div>
 
@@ -291,6 +292,30 @@
     <label>Token ID</label><input id="mId" placeholder="1" />
     <label>Price (WTX)</label><input id="mPrice" placeholder="100" />
     <button class="go" id="mGo">Approve &amp; list</button>
+  </div>
+</div>
+
+<!-- inscribe ordinal (UTXO layer, via the WATTx Wallet extension) -->
+<div class="modal" id="ordModal">
+  <div class="box form" style="width:min(560px,95vw)">
+    <button class="x" id="oX">✕</button>
+    <h3>Inscribe an Ordinal</h3>
+    <p class="sub">Write any file permanently onto the WATTx base chain — a taproot inscription that lives in your wallet as a spendable output. Files up to ~2&nbsp;MB, held fully on-chain. Signs locally in the <a href="https://github.com/nucash-mining/wattx-wallet-extension" target="_blank" style="color:var(--arc)">WATTx Wallet extension</a>.</p>
+    <div id="oWallet" style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;font-size:.8rem;margin:.5rem 0">Connecting to the WATTx Wallet…</div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:1rem;align-items:start;margin-top:.4rem">
+      <div id="oPreview" style="width:120px;height:120px;border-radius:12px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--line2);font-family:'Chakra Petch';font-size:2rem;overflow:hidden">◈</div>
+      <div>
+        <label>File</label>
+        <div style="display:flex;gap:.5rem">
+          <button type="button" id="oUpload" style="background:var(--arc);color:#fff;font-weight:600;border-radius:9px;padding:.6rem .9rem;white-space:nowrap">Choose file</button>
+          <input type="file" id="oFile" hidden />
+        </div>
+        <div id="oSize" style="font-size:.7rem;color:var(--faint);margin-top:.45rem;line-height:1.6">Any file type — image, text, JSON, audio. Cost ≈ 125 sats per byte + 0.01 WTX postage riding with the ordinal.</div>
+      </div>
+    </div>
+    <label>Deliver to (optional)</label><input id="oTo" placeholder="wx1p… taproot address — blank = your own wallet" />
+    <button class="go" id="oGo">◈ Inscribe on WATTx</button>
+    <div id="oResult" style="font-size:.8rem;margin-top:.7rem;line-height:1.7;word-break:break-all"></div>
   </div>
 </div>
 
@@ -684,7 +709,7 @@ async function loadOrdinals(){
   try{
     const r=await fetch(ORD_API+'/inscriptions?limit=60').then(x=>x.json());
     $('sListed').textContent=r.total; $('sColls').textContent='UTXO'; $('sFloor').textContent='Ordinals';
-    if(!r.items||!r.items.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>No ordinals yet</h3><p>Inscribe the first WATTx ordinal — files up to ~2 MB, on the base chain.</p></div>`; return; }
+    if(!r.items||!r.items.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>No ordinals yet</h3><p>Inscribe the first WATTx ordinal — files up to ~2 MB, on the base chain.</p><button class="go" style="max-width:240px;margin:1.1rem auto 0" onclick="openInscribe()">◈ Inscribe an ordinal</button></div>`; return; }
     g.innerHTML=r.items.map(o=>{
       const isImg=o.contentType&&o.contentType.startsWith('image/');
       const art=isImg?`<img src="${ORD_API}/inscription/${o.id}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="ph" style="display:none">◈</div>`:'<div class="ph">◈</div>';
@@ -698,11 +723,61 @@ async function loadOrdinals(){
   }catch(e){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>Ordinals indexer offline</h3><p>${ORD_API} isn't reachable yet — the WATTx UTXO API needs to be deployed publicly.</p></div>`; }
 }
 
-document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; if(view==='ordinals') loadOrdinals(); else render(); });
+// ---- Inscribe ordinal (UTXO mint, signed by the WATTx Wallet extension) ----
+let ordFile=null;                          // {name, contentType, dataBase64, size}
+const ORD_MAX=2*1024*1024;                 // ~2 MB taproot witness budget
+// mirrors the extension's fee math: reveal vsize (~bytes/4) * 500 sat/vB, + 0.01 WTX postage + commit reserve
+function ordCostSat(bytes){ const vsize=68+Math.ceil((bytes+190)/4); return Math.max(vsize*500,100000)+1000000+60000; }
+
+async function openInscribe(){
+  $('ordModal').classList.add('open'); $('oResult').innerHTML='';
+  if(!window.wattx){
+    $('oWallet').innerHTML='<span style="color:var(--hot)">WATTx Wallet extension not detected.</span> Install it from <a href="https://github.com/nucash-mining/wattx-wallet-extension" target="_blank" style="color:var(--arc)">nucash-mining/wattx-wallet-extension</a>, create a wallet, and fund its WTX address.';
+    $('oGo').disabled=true; return;
+  }
+  $('oGo').disabled=false;
+  try{
+    const acct=await window.wattx.connect();
+    if(!acct){ $('oWallet').innerHTML='<span style="color:var(--hot)">No wallet in the extension yet</span> — open the WATTx Wallet popup and create or import one first.'; $('oGo').disabled=true; return; }
+    let bal=''; try{ const b=await window.wattx.getBalance(); bal=' · <b style="color:var(--live)">'+((b.balance??b.confirmed??0)/1e8).toFixed(4)+' WTX</b>'; }catch{}
+    $('oWallet').innerHTML='Wallet <span class="mono">'+short(acct.taproot)+'</span>'+bal;
+  }catch(e){ $('oWallet').innerHTML='<span style="color:var(--hot)">'+e.message+'</span>'; }
+}
+
+$('inscribeBtn').onclick=openInscribe;
+$('oX').onclick=()=>$('ordModal').classList.remove('open');
+$('oUpload').onclick=()=>$('oFile').click();
+$('oFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>ORD_MAX){ ordFile=null; $('oPreview').innerHTML='◈'; $('oSize').innerHTML='<span style="color:var(--hot)">File is '+(f.size/1048576).toFixed(2)+' MB — the on-chain limit is ~2 MB.</span>'; return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    const dataUrl=r.result, b64=dataUrl.slice(dataUrl.indexOf(',')+1);
+    ordFile={name:f.name, contentType:f.type||'application/octet-stream', dataBase64:b64, size:f.size};
+    $('oPreview').innerHTML=(f.type||'').startsWith('image/')?'<img src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover"/>':'◈';
+    $('oSize').innerHTML='✔ '+f.name+' · <b>'+(f.size/1024).toFixed(1)+' KB</b> · est. cost <b style="color:var(--arc)">'+(ordCostSat(f.size)/1e8).toFixed(4)+' WTX</b> <span style="color:var(--faint)">(reveal fee + 0.01 WTX postage riding with the ordinal)</span>';
+  };
+  r.onerror=()=>{ ordFile=null; $('oSize').innerHTML='<span style="color:var(--hot)">Could not read that file.</span>'; };
+  r.readAsDataURL(f);
+};
+$('oGo').onclick=async()=>{
+  if(!ordFile) return toast('Choose a file to inscribe','err');
+  const to=$('oTo').value.trim();
+  if(to && !/^wx1p[a-z0-9]{20,}$/.test(to)) return toast('Destination must be a WATTx taproot address (wx1p…)','err');
+  $('oGo').disabled=true; toast('Building commit + reveal — sign in the WATTx Wallet…');
+  try{
+    const res=await window.wattx.inscribe({contentType:ordFile.contentType, dataBase64:ordFile.dataBase64, ...(to?{toAddress:to}:{})});
+    $('oResult').innerHTML='⚡ Inscribed! <span class="mono">'+res.inscriptionId+'</span><br><a href="'+ORD_API+'/inscription/'+res.inscriptionId+'" target="_blank" style="color:var(--arc)">View content →</a> <span style="color:var(--faint)">— it appears in the gallery once the reveal tx is mined.</span>';
+    toast('Ordinal inscribed ⚡','ok');
+  }catch(e){ toast((e.message||String(e)).slice(0,140),'err'); }
+  $('oGo').disabled=false;
+};
+
+document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; const ord=view==='ordinals'; $('inscribeBtn').style.display=ord?'':'none'; $('createBtn').style.display=ord?'none':''; $('listBtn').style.display=ord?'none':''; if(ord) loadOrdinals(); else render(); });
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
 $('search').oninput=()=>render();
 $('connect').onclick=connect;
-[$('detail'),$('listModal'),$('createModal'),$('addModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
+[$('detail'),$('listModal'),$('createModal'),$('addModal'),$('ordModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
 setActiveNet('wattx'); renderNetMenu();
 window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>location.reload());
 
