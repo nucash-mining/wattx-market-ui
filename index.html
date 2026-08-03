@@ -512,6 +512,7 @@ function emptyHTML(h,sub,showList){
 }
 
 function render(){
+  if(view==='ordinals') return; // load() finishing late must not stomp the ordinals grid
   let list=items.slice();
   const q=$('search').value.trim().toLowerCase();
   if(q) list=list.filter(i=>i.collection.toLowerCase().includes(q)||i.tokenId.includes(q)||i.name.toLowerCase().includes(q)||i.collName.toLowerCase().includes(q));
