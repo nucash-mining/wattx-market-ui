@@ -730,6 +730,25 @@ async function loadOrdinals(){
   }catch(e){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>Ordinals indexer offline</h3><p>${ORD_API} isn't reachable yet — the WATTx UTXO API needs to be deployed publicly.</p></div>`; }
 }
 
+// ---- ordinals wallet: the header Connect button targets window.wattx on the
+// Ordinals view (UTXO layer) and the EVM wallet (Rabby/MetaMask) everywhere else
+let ordAcct=null;
+function updateConnectBtn(){
+  const b=$('connect');
+  if(view==='ordinals'){ b.textContent=ordAcct?short(ordAcct.taproot):'Connect WATTx Wallet'; b.classList.toggle('on',!!ordAcct); }
+  else { b.textContent=me?short(me):'Connect wallet'; b.classList.toggle('on',!!me); }
+}
+async function connectOrd(){
+  if(!window.wattx){ openInscribe(); return; }  // the modal explains how to install the extension
+  try{
+    const acct=await window.wattx.connect();
+    if(!acct){ toast('Open the WATTx Wallet popup and create or import a wallet first','err'); return; }
+    ordAcct=acct; updateConnectBtn();
+    try{ const b=await window.wattx.getBalance(); toast('WATTx Wallet connected · '+((b.balance??b.confirmed??0)/1e8).toFixed(4)+' WTX','ok'); }
+    catch{ toast('WATTx Wallet connected ⚡','ok'); }
+  }catch(e){ toast((e.message||String(e)).slice(0,120),'err'); }
+}
+
 // ---- Inscribe ordinal (UTXO mint, signed by the WATTx Wallet extension) ----
 let ordFile=null;                          // {name, contentType, dataBase64, size}
 const ORD_MAX=2*1024*1024;                 // ~2 MB taproot witness budget
@@ -780,10 +799,10 @@ $('oGo').onclick=async()=>{
   $('oGo').disabled=false;
 };
 
-document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; const ord=view==='ordinals'; $('inscribeBtn').style.display=ord?'':'none'; $('createBtn').style.display=ord?'none':''; $('listBtn').style.display=ord?'none':''; if(ord) loadOrdinals(); else render(); });
+document.querySelectorAll('.hnav a').forEach(a=>a.onclick=()=>{ document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on')); a.classList.add('on'); view=a.dataset.view; const ord=view==='ordinals'; $('inscribeBtn').style.display=ord?'':'none'; $('createBtn').style.display=ord?'none':''; $('listBtn').style.display=ord?'none':''; updateConnectBtn(); if(ord) loadOrdinals(); else render(); });
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); filter=c.dataset.filter; render(); });
 $('search').oninput=()=>render();
-$('connect').onclick=connect;
+$('connect').onclick=()=>view==='ordinals'?connectOrd():connect();
 [$('detail'),$('listModal'),$('createModal'),$('addModal'),$('ordModal')].forEach(m=>m.onclick=e=>{ if(e.target===m) m.classList.remove('open'); });
 setActiveNet('wattx'); renderNetMenu();
 window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>location.reload());
