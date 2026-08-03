@@ -707,16 +707,22 @@ async function loadOrdinals(){
   const g=$('grid');
   g.innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
   try{
-    const r=await fetch(ORD_API+'/inscriptions?limit=60').then(x=>x.json());
-    $('sListed').textContent=r.total; $('sColls').textContent='UTXO'; $('sFloor').textContent='Ordinals';
-    if(!r.items||!r.items.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>No ordinals yet</h3><p>Inscribe the first WATTx ordinal — files up to ~2 MB, on the base chain.</p><button class="go" style="max-width:240px;margin:1.1rem auto 0" onclick="openInscribe()">◈ Inscribe an ordinal</button></div>`; return; }
-    g.innerHTML=r.items.map(o=>{
+    // rich index first (ownership + transfer tracking); fall back to the block-scan list
+    let items=null;
+    try{ const r=await fetch(ORD_API+'/ord/inscriptions').then(x=>x.json());
+      if(Array.isArray(r)) items=r.map(o=>({id:o.id, contentType:o.ctype, height:o.height, owner:o.owner, transfers:o.transfers||0, bytes:o.bytes})); }catch{}
+    if(!items){ const r=await fetch(ORD_API+'/inscriptions?limit=60').then(x=>x.json());
+      items=(r.items||[]).map(o=>({id:o.id, contentType:o.contentType, height:o.height, owner:o.address})); }
+    $('sListed').textContent=items.length; $('sColls').textContent='UTXO'; $('sFloor').textContent='Ordinals';
+    if(!items.length){ g.innerHTML=`<div class="empty"><div class="ic">◈</div><h3>No ordinals yet</h3><p>Inscribe the first WATTx ordinal — files up to ~2 MB, on the base chain.</p><button class="go" style="max-width:240px;margin:1.1rem auto 0" onclick="openInscribe()">◈ Inscribe an ordinal</button></div>`; return; }
+    g.innerHTML=items.map(o=>{
       const isImg=o.contentType&&o.contentType.startsWith('image/');
       const art=isImg?`<img src="${ORD_API}/inscription/${o.id}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="ph" style="display:none">◈</div>`:'<div class="ph">◈</div>';
+      const owner=o.owner?`<div class="owner mono" style="font-size:.68rem;color:var(--faint)">◈ ${short(o.owner)}${o.transfers?' · '+o.transfers+' transfer'+(o.transfers>1?'s':''):''}</div>`:'';
       return `<div class="nft" onclick="window.open('${ORD_API}/inscription/${o.id}','_blank')">
         <div class="art">${art}<div class="badge" style="color:var(--arc)">ORDINAL</div></div>
-        <div class="body"><div class="coll">${o.contentType}</div>
-          <div class="name mono">${o.id.slice(0,10)}…i0</div>
+        <div class="body"><div class="coll">${o.contentType}${o.bytes?' · '+(o.bytes/1024).toFixed(1)+' KB':''}</div>
+          <div class="name mono">${o.id.slice(0,10)}…i0</div>${owner}
           <div class="foot"><div class="price"><div class="lbl">Inscribed</div><span class="p" style="color:var(--arc);font-size:.9rem">block ${o.height}</span></div></div>
         </div></div>`;
     }).join('');
