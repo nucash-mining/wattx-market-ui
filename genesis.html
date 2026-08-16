@@ -4,132 +4,232 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>100K WATT Club — Genesis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#000004; --panel:#0a0a14; --line:#1c1c2e; --txt:#d8d8e6; --dim:#8a8aa0;
-    --gold:#ffd24a; --gold-dim:#c29a2e; --plat:#e8eaee; --blue:#45d7ff; --ok:#3ddc84; --bad:#ff5470;
+    --void:#000004; --ink:#0a0a16; --line:#191926;
+    --gold:#ffd24a; --gold-deep:#8a6a1d; --plat:#e8eaee; --electric:#45d7ff;
+    --txt:#d9d9e8; --dim:#7b7b94; --ok:#3ddc84; --bad:#ff5470;
+    --disp:"Chakra Petch",sans-serif; --mono:"IBM Plex Mono",monospace; --body:"IBM Plex Sans",sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--txt);font:15px/1.55 "Segoe UI",system-ui,sans-serif;min-height:100vh}
-  a{color:var(--blue);text-decoration:none}
-  .wrap{max-width:1060px;margin:0 auto;padding:0 20px 80px}
-  header{display:flex;align-items:center;gap:14px;padding:18px 0;border-bottom:1px solid var(--line)}
-  header .logo{font-size:22px;font-weight:800;letter-spacing:.5px}
-  header .logo b{color:var(--gold)}
-  header nav{margin-left:auto;display:flex;gap:18px;font-size:14px}
-  header nav a{color:var(--dim)} header nav a:hover{color:var(--txt)}
-  .hero{text-align:center;padding:52px 0 30px}
-  .hero h1{font-size:clamp(30px,6vw,52px);font-weight:900;letter-spacing:1px}
-  .hero h1 .k{color:var(--gold)}
-  .hero .sub{color:var(--dim);margin-top:10px;font-size:17px}
-  .hero .sub b{color:var(--txt)}
-  .ghash{margin:28px auto 0;max-width:860px;background:var(--panel);border:1px solid var(--gold-dim);
-    border-radius:12px;padding:18px 20px;text-align:left;overflow-x:auto}
-  .ghash .lbl{font-size:12px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
-  .ghash code{font:600 15px/1.4 ui-monospace,Consolas,monospace;word-break:break-all;color:var(--txt)}
-  .ghash .note{color:var(--dim);font-size:13px;margin-top:10px}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:44px;align-items:start}
-  @media(max-width:860px){.cols{grid-template-columns:1fr}}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
-  .panel h2{font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:16px}
-  .chain{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
-  .chain .row1{display:flex;align-items:baseline;gap:10px}
-  .chain .name{font-weight:700;font-size:16px}
-  .chain .tag{font-size:11px;letter-spacing:1px;padding:2px 8px;border-radius:20px;border:1px solid var(--gold-dim);color:var(--gold)}
-  .chain .stat{margin-left:auto;font-size:13px;color:var(--dim)}
-  .chain .addr{font:12px ui-monospace,Consolas,monospace;color:var(--dim);word-break:break-all;margin-top:6px}
-  .chain .live{font-size:13px;margin-top:8px;display:flex;gap:16px;flex-wrap:wrap}
-  .chain .live .ok{color:var(--ok)} .chain .live .bad{color:var(--bad)} .chain .live .wait{color:var(--dim)}
-  .price{font-size:13px;color:var(--dim);margin-top:6px}
-  .preview img{width:100%;border-radius:10px;border:1px solid var(--line);background:#000;display:block;min-height:280px}
-  .preview img:not([src]){color:transparent} /* hide broken-image glyph until the chain answers */
-  .pv-ctl{display:flex;gap:10px;margin-top:12px;align-items:center}
-  .pv-ctl input{background:#05050c;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 12px;width:110px;font-size:15px}
-  .pv-ctl button{background:var(--gold);color:#201700;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
-  .pv-ctl .tier{font-size:13px;color:var(--dim)}
-  .pv-note{color:var(--dim);font-size:12.5px;margin-top:10px}
-  .story{margin-top:44px;color:var(--dim);max-width:800px}
-  .story h2{color:var(--txt);font-size:19px;margin:26px 0 8px}
-  .story p{margin-bottom:10px}
-  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
-  @media(max-width:640px){.tiers{grid-template-columns:1fr}}
-  .tier-c{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
-  .tier-c b{display:block;font-size:15px;margin-bottom:2px}
-  .t-gen b{color:var(--gold)} .t-fou b{color:var(--plat)} .t-mem b{color:var(--blue)}
-  footer{margin-top:56px;border-top:1px solid var(--line);padding-top:18px;color:var(--dim);font-size:13px;text-align:center}
+  html{scroll-behavior:smooth}
+  body{background:var(--void);color:var(--txt);font:15.5px/1.6 var(--body)}
+  a{color:var(--electric);text-decoration:none}
+  img{max-width:100%}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+  /* header */
+  header{border-bottom:1px solid var(--line)}
+  .hbar{display:flex;align-items:center;gap:12px;padding:16px 0}
+  .hbar .mark{font:700 19px var(--disp);letter-spacing:.14em}
+  .hbar .mark em{font-style:normal;color:var(--gold)}
+  .hbar nav{margin-left:auto;display:flex;gap:22px;font:600 13px var(--body)}
+  .hbar nav a{color:var(--dim)} .hbar nav a:hover{color:var(--txt)}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:64px 0 48px}
+  @media(max-width:920px){.hero{grid-template-columns:1fr;gap:32px}}
+  .hero .eyebrow{font:600 12px var(--mono);letter-spacing:.35em;color:var(--gold);text-transform:uppercase}
+  .hero h1{font:700 clamp(38px,5.6vw,64px)/1.04 var(--disp);letter-spacing:.01em;margin:14px 0 18px;text-transform:uppercase}
+  .hero h1 .g{color:var(--gold)}
+  .hero p.lead{color:var(--dim);max-width:46ch}
+  .hero p.lead b{color:var(--txt)}
+  .mintline{margin-top:26px;border-left:2px solid var(--gold);padding:6px 0 6px 16px;font:400 14px var(--mono);color:var(--dim)}
+  .mintline b{color:var(--gold);font-weight:600}
+  .badgeframe{position:relative}
+  .badgeframe img{display:block;width:100%;border:1px solid var(--line)}
+  .badgeframe .plate{display:flex;justify-content:space-between;
+    font:600 11px var(--mono);letter-spacing:.2em;color:var(--gold);padding:10px 2px 0;
+    text-transform:uppercase}
+
+  /* genesis record — signature block */
+  .record{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:52px 0}
+  .rec-head{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .rec-head h2{font:700 22px var(--disp);letter-spacing:.06em;text-transform:uppercase}
+  .rec-head .where{font:600 12px var(--mono);letter-spacing:.25em;color:var(--gold);text-transform:uppercase}
+  .rec-body{display:grid;grid-template-columns:auto 1fr;gap:44px;margin-top:28px;align-items:start}
+  @media(max-width:920px){.rec-body{grid-template-columns:1fr}}
+  .bits{display:grid;grid-template-columns:repeat(32,14px);gap:2px;font:600 11px/14px var(--mono)}
+  @media(max-width:560px){.bits{grid-template-columns:repeat(16,14px)}}
+  .bits span{width:14px;height:14px;text-align:center;color:#26263a}
+  .bits span.on{color:var(--gold)}
+  .rec-info .hash{font:600 15px/1.5 var(--mono);word-break:break-all;color:var(--plat)}
+  .rec-info .hash a{color:inherit;border-bottom:1px dashed var(--gold-deep)}
+  .rec-info p{color:var(--dim);margin-top:14px;max-width:56ch}
+  .rec-info p code{font:600 .92em var(--mono);color:var(--txt)}
+  .copybtn{margin-top:16px;background:none;border:1px solid var(--gold-deep);color:var(--gold);
+    font:600 12px var(--mono);letter-spacing:.15em;padding:8px 16px;cursor:pointer;text-transform:uppercase}
+  .copybtn:hover{background:rgba(255,210,74,.08)}
+
+  /* chains */
+  section.block{padding:56px 0 8px}
+  .block>h2{font:700 22px var(--disp);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+  .block>.sub{color:var(--dim);margin-bottom:26px;max-width:64ch}
+  .chaingrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .cchip{background:var(--ink);padding:18px;display:flex;flex-direction:column;gap:10px;min-height:132px}
+  .cchip .top{display:flex;align-items:center;gap:10px}
+  .cchip .logo{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center}
+  .cchip .logo img,.cchip .logo svg{width:30px;height:30px;object-fit:contain;display:block}
+  .cchip .cname{font:700 15px var(--disp);letter-spacing:.04em}
+  .cchip .pay{font:400 12.5px var(--mono);color:var(--dim)}
+  .cchip .status{margin-top:auto;font:600 11px var(--mono);letter-spacing:.18em;text-transform:uppercase}
+  .cchip .status.live{color:var(--ok)} .cchip .status.dep{color:var(--gold)} .cchip .status.soon{color:var(--dim)}
+  .cchip .minted{font:400 12px var(--mono);color:var(--dim)}
+  .cchip.genesis{outline:1px solid var(--gold-deep);outline-offset:-1px}
+  .cchip.genesis .cname::after{content:"GENESIS";font:600 9px var(--mono);letter-spacing:.2em;color:var(--gold);
+    border:1px solid var(--gold-deep);padding:2px 6px;margin-left:8px;vertical-align:2px}
+
+  /* verify terminal */
+  .term{background:var(--ink);border:1px solid var(--line);padding:22px 24px;font:400 13.5px/2 var(--mono)}
+  .term .ln .p{color:var(--gold-deep)}
+  .term .ln .c{color:var(--txt)}
+  .term .ok{color:var(--ok)} .term .bad{color:var(--bad)} .term .wait{color:var(--dim)}
+
+  /* renderer */
+  .render{display:grid;grid-template-columns:.9fr 1.1fr;gap:44px;align-items:center}
+  @media(max-width:920px){.render{grid-template-columns:1fr}}
+  .render .stage{background:#000;border:1px solid var(--line);aspect-ratio:960/1010;display:flex;align-items:center;justify-content:center}
+  .render .stage img{width:100%;display:none}
+  .render .stage .hold{color:var(--dim);font:400 13px var(--mono);padding:20px;text-align:center}
+  .rctl{display:flex;gap:12px;align-items:center;margin-top:18px}
+  .rctl input{background:var(--void);border:1px solid var(--line);color:var(--txt);padding:10px 14px;width:120px;font:600 16px var(--mono)}
+  .rctl button{background:var(--gold);border:0;color:#201700;font:700 13px var(--disp);letter-spacing:.1em;padding:12px 22px;cursor:pointer;text-transform:uppercase}
+  .rctl button:hover{background:#ffdd75}
+  .rctl .tier{font:600 12px var(--mono);letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+  .render .exp p{color:var(--dim);margin-top:10px;max-width:52ch}
+  .render .exp p b{color:var(--txt)}
+
+  /* tiers */
+  .tierrow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  @media(max-width:640px){.tierrow{grid-template-columns:1fr}}
+  .tier{background:var(--ink);padding:20px}
+  .tier .tname{font:700 17px var(--disp);letter-spacing:.12em}
+  .tier .trange{font:400 13px var(--mono);color:var(--dim);margin-top:4px}
+  .tier.g .tname{color:var(--gold)} .tier.f .tname{color:var(--plat)} .tier.m .tname{color:var(--electric)}
+  .tier .bar{height:3px;margin-top:14px}
+  .tier.g .bar{background:linear-gradient(90deg,var(--gold),#6e5417)}
+  .tier.f .bar{background:linear-gradient(90deg,var(--plat),#565e6b)}
+  .tier.m .bar{background:linear-gradient(90deg,var(--electric),#0d4a68)}
+
+  footer{margin-top:64px;border-top:1px solid var(--line);padding:22px 0 46px;color:var(--dim);font:400 12.5px var(--mono)}
+  footer .wrap{display:flex;gap:18px;flex-wrap:wrap}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  @media(prefers-reduced-motion:no-preference){
+    .bits span{opacity:0;animation:bit .3s forwards}
+    @keyframes bit{to{opacity:1}}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">⚡ <b>100K</b> WATT CLUB</div>
-    <nav>
-      <a href="index.html">Marketplace</a>
-      <a href="https://wattxchange.app" target="_blank" rel="noopener">WATTxchange</a>
-    </nav>
-  </header>
+<header><div class="wrap hbar">
+  <div class="mark">⚡ <em>100K</em> WATT CLUB</div>
+  <nav>
+    <a href="index.html">Marketplace</a>
+    <a href="#chains">Chains</a>
+    <a href="#verify">Verify</a>
+    <a href="https://wattxchange.app" target="_blank" rel="noopener">WATTxchange</a>
+  </nav>
+</div></header>
 
-  <div class="hero">
-    <h1><span class="k">10,000</span> BADGES.<br>ONE GENESIS. EVERY CHAIN.</h1>
-    <div class="sub">The member badge of the <b>100K WATT Club</b> — Mining Game pool hosts, festival lifers, written in binary, stored entirely on-chain.</div>
-    <div class="ghash">
-      <div class="lbl">Series genesis — recorded on WATTxchain</div>
-      <code id="ghash">0x7451a60c06684a3293bab82d373bcdb1c32f755b14bff590780cde8cafc40a32</code>
-      <div class="note">keccak256 of the artwork itself. Every deployment on every chain carries this hash immutably and proves its stored art matches it (<code>verifyArt()</code>) — all legs trace back to the WATTxchain genesis. No server, no IPFS, no domain: the badge lives exactly as long as the chains do.</div>
+<div class="wrap hero">
+  <div>
+    <div class="eyebrow">Membership badge · Mining Game pool hosts</div>
+    <h1>Ten thousand badges.<br><span class="g">One genesis.</span><br>Every chain.</h1>
+    <p class="lead">Every mark in this artwork is a live <b>0</b> or <b>1</b> — thousands of digits arranged into the WATTx emblem, stored entirely on-chain. A badge is a member's permanent record: host stake, pool, festival access for life.</p>
+    <div class="mintline">MINT · <b>100,000 WTX</b> or <b>100,000 WATT</b> on WATTxchain · <b>100,000 WATT</b> on Altcoinchain &amp; Polygon · the live value of 100,000 WATT everywhere else</div>
+  </div>
+  <div class="badgeframe">
+    <img id="heroart" src="art/badge-1.svg" alt="100K WATT Club badge #00001 — the WATTx emblem drawn in binary digits, Genesis gold">
+    <div class="plate"><span>Badge #00001 · Genesis</span><span id="heroplate">reserved</span></div>
+  </div>
+</div>
+
+<div class="record"><div class="wrap">
+  <div class="rec-head"><h2>The genesis record</h2><span class="where">Written on WATTxchain</span></div>
+  <div class="rec-body">
+    <div class="bits" id="bits" aria-label="the genesis hash as 256 binary digits"></div>
+    <div class="rec-info">
+      <div class="hash" id="ghash">0x7451a60c06684a3293bab82d373bcdb1c32f755b14bff590780cde8cafc40a32</div>
+      <p>The hash <em>is</em> the artwork — keccak256 of the badge art itself, shown here the way the badge writes everything: in binary. It is burned immutably into every deployment on every chain, and each contract proves its stored art matches it with a public <code>verifyArt()</code>. No server, no IPFS, no domain. The series lives exactly as long as the chains do, and every leg traces back to WATTxchain.</p>
+      <button class="copybtn" id="copyhash">Copy hash</button>
     </div>
   </div>
+</div></div>
 
-  <div class="cols">
-    <div class="panel preview">
-      <h2>On-chain render — live from WATTxchain</h2>
-      <img id="pvimg" alt="badge preview">
-      <div class="pv-ctl">
-        <input id="pvid" type="number" min="1" max="10000" value="1">
+<section class="block wrap" id="chains">
+  <h2>Mint on any chain</h2>
+  <p class="sub">One global member-number sequence across every chain — first come, first numbered. Badge numbers never collide and never repeat, wherever they are minted.</p>
+  <div class="chaingrid" id="chaingrid"></div>
+</section>
+
+<section class="block wrap" id="verify">
+  <h2>Verify it yourself</h2>
+  <p class="sub">Your browser asks each chain directly — no indexer, no API of ours in the middle.</p>
+  <div class="term" id="term"></div>
+</section>
+
+<section class="block wrap" id="renderer">
+  <h2>Ask the chain to draw</h2>
+  <div class="render">
+    <div>
+      <div class="stage"><img id="pvimg" alt=""><div class="hold" id="pvhold">Live rendering unlocks when the WATTxchain contract finishes deploying.</div></div>
+      <div class="rctl">
+        <input id="pvid" type="number" min="1" max="10000" value="1" aria-label="member number">
         <button id="pvbtn">Render</button>
         <span class="tier" id="pvtier"></span>
       </div>
-      <div class="pv-note">This image is generated by the chain when you ask for it — the SVG below is the answer to an RPC call, not a file on a server. Member number, tier metals, accent hue and the binary strip are all computed on-chain.</div>
     </div>
-
-    <div class="panel">
-      <h2>Deployments</h2>
-      <div id="chains"></div>
-      <div class="price">Mint: <b>100,000 WTX</b> or <b>100,000 WATT</b> on WATTxchain · <b>100,000 WATT</b> on Altcoinchain &amp; Polygon · the live value of 100,000 WATT in native coin everywhere else. One global member-number sequence across all chains — first come, first numbered.</div>
+    <div class="exp">
+      <p>Type any member number. The image that appears is not a file — it is the answer to an RPC call, generated by the chain at that moment: tier metals by number, a one-of-10,000 accent hue, and the member number written along the bottom in the same 0/1 glyphs the emblem is drawn from.</p>
+      <p><b>Stake Chain</b> and <b>Pool ID</b> traits update live as members register Mining Game host pools — the badge is a living record, not a picture.</p>
+      <div class="tierrow" style="margin-top:22px">
+        <div class="tier g"><div class="tname">GENESIS</div><div class="trange">#1 – #100</div><div class="bar"></div></div>
+        <div class="tier f"><div class="tname">FOUNDER</div><div class="trange">#101 – #1,000</div><div class="bar"></div></div>
+        <div class="tier m"><div class="tname">MEMBER</div><div class="trange">#1,001 – #10,000</div><div class="bar"></div></div>
+      </div>
     </div>
   </div>
+</section>
 
-  <div class="story">
-    <h2>What a badge is</h2>
-    <p>One badge = one member of the 100K WATT Club: a Mining Game pool host with a 100,000 WATT host stake locked on-chain, and a lifetime all-access pass to every 100K WATT Club music and art festival, forever. The badge's <b>Stake Chain</b> and <b>Pool ID</b> traits update live as hosts register pools — the badge is a living record, not a picture.</p>
-    <h2>Tiers</h2>
-    <div class="tiers">
-      <div class="tier-c t-gen"><b>GENESIS</b>#1 – #100 · gold</div>
-      <div class="tier-c t-fou"><b>FOUNDER</b>#101 – #1,000 · platinum</div>
-      <div class="tier-c t-mem"><b>MEMBER</b>#1,001 – #10,000 · electric</div>
-    </div>
-    <p style="margin-top:12px">Every badge also carries its own accent hue — 10,000 distinct colorways — and its member number written in binary along the bottom, in the same 0/1 glyphs the emblem itself is drawn from.</p>
-  </div>
-
-  <footer>100K WATT Club · genesis on WATTxchain · art &amp; metadata 100% on-chain · <span id="ft"></span></footer>
-</div>
+<footer><div class="wrap">
+  <span>100K WATT CLUB</span><span>genesis on WATTxchain</span><span>art &amp; metadata 100% on-chain</span>
+  <span><a href="https://wattxchange.app" target="_blank" rel="noopener">wattxchange.app</a></span>
+</div></footer>
 
 <script>
-// ---- config: contract addresses land here as each chain deploys ----
 const GENESIS_HASH = "0x7451a60c06684a3293bab82d373bcdb1c32f755b14bff590780cde8cafc40a32";
+// contract/renderer addresses land here as each chain deploys
 const CHAINS = [
-  { id: 22356, name: "WATTxchain", tag: "GENESIS", rpc: "https://rpc-wtx.wattxchange.app",
-    badge: "", renderer: "", explorer: "https://wtx-exp.wattxchange.app" },
-  { id: 2330, name: "Altcoinchain", tag: "", rpc: "https://rpc.wattxchange.app",
-    badge: "", renderer: "", explorer: "https://alt-exp.wattxchange.app" },
-  { id: 137, name: "Polygon", tag: "", rpc: "https://polygon-bor-rpc.publicnode.com",
-    badge: "", renderer: "", explorer: "https://polygonscan.com" },
+  { key:"wtx",  name:"WATTxchain",   genesis:true, pay:"100k WTX · 100k WATT", logo:"img:art/wtx.png",
+    rpc:"https://rpc-wtx.wattxchange.app", badge:"", renderer:"", status:"deploying" },
+  { key:"alt",  name:"Altcoinchain", pay:"100k WATT", logo:"img:art/alt.png",
+    rpc:"https://rpc.wattxchange.app", badge:"", renderer:"", status:"queued" },
+  { key:"pol",  name:"Polygon",      pay:"100k WATT · POL", logo:"img:art/polygon.svg",
+    rpc:"https://polygon-bor-rpc.publicnode.com", badge:"", renderer:"", status:"queued",
+    explorer:"https://polygonscan.com/address/" },
+  { key:"eth",  name:"Ethereum",     pay:"ETH @ 100k WATT", logo:"img:art/eth.png", status:"soon" },
+  { key:"base", name:"Base",         pay:"ETH @ 100k WATT", logo:"svg:base", status:"soon" },
+  { key:"arb",  name:"Arbitrum",     pay:"ETH @ 100k WATT", logo:"svg:arb", status:"soon" },
+  { key:"op",   name:"Optimism",     pay:"ETH @ 100k WATT", logo:"svg:op", status:"soon" },
+  { key:"avax", name:"Avalanche",    pay:"AVAX @ 100k WATT", logo:"svg:avax", status:"soon" },
+  { key:"btc",  name:"Bitcoin",      pay:"ordinal · BTC @ 100k WATT", logo:"img:art/btc.png", status:"soon" },
+  { key:"bsv",  name:"BSV",          pay:"1Sat ordinal · BSV @ 100k WATT", logo:"svg:bsv", status:"soon" },
 ];
-// selectors
-const SEL = { GENESIS_HASH: "0xf087392e", totalMinted: "0xa2309ff8", verifyArt: "0xa3c4ef6d", render: "0x108ead31" };
+const SVGS = {
+  base:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#0052FF"/><path d="M16.4 27C22.5 27 27.4 22.1 27.4 16S22.5 5 16.4 5C10.6 5 5.9 9.4 5.4 15h14.5v2H5.4c.5 5.6 5.2 10 11 10z" fill="#fff"/></svg>`,
+  op:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#FF0420"/><path d="M11.4 20.2c-2.2 0-3.6-1.1-3.6-3.1 0-.4 0-.8.1-1.3.3-1.5.6-2.6 1.2-3.4.9-1.2 2.2-1.8 4-1.8 2.2 0 3.6 1.1 3.6 3.1 0 .4-.1.9-.2 1.3-.3 1.5-.6 2.6-1.2 3.4-.9 1.2-2.2 1.8-3.9 1.8zm.2-2c.8 0 1.4-.4 1.8-1.2.3-.6.5-1.4.7-2.4.1-.4.1-.7.1-1 0-.9-.5-1.3-1.4-1.3-.8 0-1.4.4-1.8 1.2-.3.5-.5 1.4-.7 2.4-.1.3-.1.7-.1.9 0 1 .5 1.4 1.4 1.4zm5.9 1.9 1.8-9.3h3.7c1.9 0 3.1.9 3.1 2.6 0 2.5-1.7 4-4.3 4h-1.9l-.5 2.7h-1.9zm4.7-4.5c1.1 0 1.9-.7 1.9-1.9 0-.7-.5-1.1-1.3-1.1h-1.5l-.6 3h1.5z" fill="#fff"/></svg>`,
+  arb:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#213147"/><path d="M16 5.5 7 10.8v10.4l3.2 1.9 5.8-14.8 1.5.9-5.7 14.7 1.6 1 5.7-14.6 1.5.9-5.7 14.5 1.1.6 9-5.3V10.8L16 5.5z" fill="#12AAFF"/></svg>`,
+  avax:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#E84142"/><path d="M20.6 21.9h3.5c.8 0 1.2-.8.8-1.5l-7.5-13c-.4-.7-1.4-.7-1.8 0l-2.4 4.1c-.3.5-.3 1.1 0 1.6l4.7 8.1c.4.5.9.7 1.4.7zm-7.1 0c.6 0 1.1-.3 1.4-.8l1-1.8c.3-.5.3-1.1 0-1.6l-1-1.7c-.4-.7-1.4-.7-1.8 0l-2.7 4.4c-.4.7 0 1.5.8 1.5h2.3z" fill="#fff"/></svg>`,
+  bsv:`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#EAB300"/><text x="16" y="22" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" font-weight="bold" fill="#fff">₿</text></svg>`,
+};
+const SEL = { GENESIS_HASH:"0xf087392e", totalMinted:"0xa2309ff8", verifyArt:"0xa3c4ef6d", render:"0x108ead31" };
 
 async function ethCall(rpc, to, data) {
-  const r = await fetch(rpc, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to, data }, "latest"] }) });
+  const r = await fetch(rpc, { method:"POST", headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ jsonrpc:"2.0", id:1, method:"eth_call", params:[{ to, data }, "latest"] }) });
   const j = await r.json();
   if (j.error) throw new Error(j.error.message || "rpc error");
   return j.result;
@@ -139,75 +239,102 @@ function decodeString(hex) {
   const b = hex.slice(2);
   const off = parseInt(b.slice(0, 64), 16) * 2;
   const len = parseInt(b.slice(off, off + 64), 16) * 2;
-  const data = b.slice(off + 64, off + 64 + len);
   let s = "";
-  for (let i = 0; i < data.length; i += 2) s += String.fromCharCode(parseInt(data.substr(i, 2), 16));
+  for (let i = 0; i < len; i += 2) s += String.fromCharCode(parseInt(b.substr(off + 64 + i, 2), 16));
   return s;
 }
-const tierOf = (n) => n <= 100 ? "GENESIS · gold" : n <= 1000 ? "FOUNDER · platinum" : "MEMBER · electric";
+const tierOf = (n) => n <= 100 ? "GENESIS · GOLD" : n <= 1000 ? "FOUNDER · PLATINUM" : "MEMBER · ELECTRIC";
 
-function chainCard(c) {
-  const el = document.createElement("div");
-  el.className = "chain";
-  el.innerHTML = `
-    <div class="row1"><span class="name">${c.name}</span>
-      ${c.tag ? `<span class="tag">${c.tag}</span>` : ""}
-      <span class="stat" id="st-${c.id}"></span></div>
-    <div class="addr" id="ad-${c.id}"></div>
-    <div class="live" id="lv-${c.id}"></div>`;
-  return el;
-}
-
-async function loadChain(c) {
-  const ad = document.getElementById("ad-" + c.id), lv = document.getElementById("lv-" + c.id),
-        st = document.getElementById("st-" + c.id);
-  if (!c.badge) { ad.textContent = "deploying…"; lv.innerHTML = `<span class="wait">contract not live yet</span>`; return; }
-  ad.innerHTML = c.explorer && c.id === 137
-    ? `<a href="${c.explorer}/address/${c.badge}" target="_blank" rel="noopener">${c.badge}</a>` : c.badge;
-  try {
-    const [gh, tm, va] = await Promise.all([
-      ethCall(c.rpc, c.badge, SEL.GENESIS_HASH),
-      ethCall(c.rpc, c.badge, SEL.totalMinted),
-      ethCall(c.rpc, c.badge, SEL.verifyArt),
-    ]);
-    const ghOk = gh.toLowerCase() === GENESIS_HASH.toLowerCase();
-    const artOk = BigInt(va) === 1n;
-    st.textContent = `${parseInt(tm, 16)} / 10000 minted`;
-    lv.innerHTML =
-      `<span class="${ghOk ? "ok" : "bad"}">${ghOk ? "✓ genesis hash matches" : "✗ GENESIS HASH MISMATCH"}</span>` +
-      `<span class="${artOk ? "ok" : "bad"}">${artOk ? "✓ on-chain art verified" : "✗ ART MISMATCH"}</span>`;
-  } catch (e) {
-    lv.innerHTML = `<span class="wait">live read failed: ${String(e.message).slice(0, 60)}</span>`;
+/* signature: the hash as 256 bits */
+(() => {
+  const grid = document.getElementById("bits");
+  const bits = BigInt(GENESIS_HASH).toString(2).padStart(256, "0");
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 256; i++) {
+    const s = document.createElement("span");
+    s.textContent = bits[i];
+    if (bits[i] === "1") s.className = "on";
+    s.style.animationDelay = (i * 6) + "ms";
+    frag.appendChild(s);
   }
+  grid.appendChild(frag);
+})();
+document.getElementById("copyhash").onclick = async (e) => {
+  await navigator.clipboard.writeText(GENESIS_HASH);
+  e.target.textContent = "Copied";
+  setTimeout(() => e.target.textContent = "Copy hash", 1500);
+};
+
+/* chain grid */
+const grid = document.getElementById("chaingrid");
+for (const c of CHAINS) {
+  const el = document.createElement("div");
+  el.className = "cchip" + (c.genesis ? " genesis" : "");
+  const logo = c.logo.startsWith("img:")
+    ? `<img src="${c.logo.slice(4)}" alt="">` : SVGS[c.logo.slice(4)];
+  const statusTxt = { live:"● live", deploying:"◈ genesis deploying", queued:"◇ queued", soon:"○ coming soon" }[c.status];
+  const statusCls = { live:"live", deploying:"dep", queued:"dep", soon:"soon" }[c.status];
+  el.innerHTML = `
+    <div class="top"><span class="logo">${logo}</span><span class="cname">${c.name}</span></div>
+    <div class="pay">${c.pay}</div>
+    <div class="minted" id="mint-${c.key}"></div>
+    <div class="status ${statusCls}" id="st-${c.key}">${statusTxt}</div>`;
+  grid.appendChild(el);
 }
 
+/* verify terminal */
+async function verify() {
+  const term = document.getElementById("term");
+  term.innerHTML = "";
+  const ln = (html) => { const d = document.createElement("div"); d.className = "ln"; d.innerHTML = html; term.appendChild(d); };
+  let any = false;
+  for (const c of CHAINS.filter(c => c.rpc !== undefined)) {
+    if (!c.badge) { ln(`<span class="p">&gt;</span> <span class="c">${c.name}</span> :: <span class="wait">contract not deployed yet</span>`); continue; }
+    any = true;
+    ln(`<span class="p">&gt;</span> <span class="c">${c.name}</span> :: ${c.badge}`);
+    try {
+      const [gh, tm, va] = await Promise.all([
+        ethCall(c.rpc, c.badge, SEL.GENESIS_HASH),
+        ethCall(c.rpc, c.badge, SEL.totalMinted),
+        ethCall(c.rpc, c.badge, SEL.verifyArt),
+      ]);
+      const ghOk = gh.toLowerCase() === GENESIS_HASH.toLowerCase();
+      const vaOk = BigInt(va) === 1n;
+      ln(`&nbsp;&nbsp;GENESIS_HASH() ......... ${ghOk ? '<span class="ok">MATCH</span>' : '<span class="bad">MISMATCH</span>'}`);
+      ln(`&nbsp;&nbsp;verifyArt() ............ ${vaOk ? '<span class="ok">ART = GENESIS</span>' : '<span class="bad">ART MISMATCH</span>'}`);
+      ln(`&nbsp;&nbsp;totalMinted() .......... <span class="c">${parseInt(tm,16)} / 10000</span>`);
+      document.getElementById("mint-" + c.key).textContent = `${parseInt(tm,16)} / 10,000 minted`;
+      const st = document.getElementById("st-" + c.key);
+      st.textContent = "● live"; st.className = "status live";
+    } catch (e) {
+      ln(`&nbsp;&nbsp;<span class="bad">read failed:</span> <span class="wait">${String(e.message).slice(0,70)}</span>`);
+    }
+  }
+  if (!any) ln(`<span class="p">&gt;</span> <span class="wait">verification goes live with the first deployment — the WATTxchain genesis is deploying now</span>`);
+}
+verify();
+
+/* live renderer */
 async function renderPreview() {
-  const img = document.getElementById("pvimg"), tier = document.getElementById("pvtier");
+  const img = document.getElementById("pvimg"), hold = document.getElementById("pvhold"),
+        tier = document.getElementById("pvtier");
   const id = Math.min(10000, Math.max(1, parseInt(document.getElementById("pvid").value || "1", 10)));
   tier.textContent = "#" + String(id).padStart(5, "0") + " · " + tierOf(id);
-  const src = CHAINS.find(c => c.renderer) // first live renderer (WATTx once deployed)
-  if (!src) { img.alt = "deploying — preview available once the WATTxchain contract is live"; return; }
+  const src = CHAINS.find(c => c.renderer);
+  if (!src) return;
   try {
-    img.style.opacity = .4;
-    // render(uint256,string,string) with two empty strings
+    hold.textContent = "asking " + src.name + "…";
     const data = SEL.render + word(id) + word(0x60) + word(0x80) + word(0) + word(0);
     const uri = decodeString(await ethCall(src.rpc, src.renderer, data));
     const json = JSON.parse(atob(uri.split(",")[1]));
-    img.src = json.image;
-    img.style.opacity = 1;
+    img.src = json.image; img.style.display = "block"; hold.style.display = "none";
   } catch (e) {
-    img.style.opacity = 1;
-    document.getElementById("pvtier").textContent += " · render failed (" + String(e.message).slice(0, 40) + ")";
+    hold.textContent = "render failed: " + String(e.message).slice(0, 60);
   }
 }
-
-const wrap = document.getElementById("chains");
-for (const c of CHAINS) wrap.appendChild(chainCard(c));
-CHAINS.forEach(loadChain);
 renderPreview();
 document.getElementById("pvbtn").onclick = renderPreview;
 document.getElementById("pvid").addEventListener("keydown", e => { if (e.key === "Enter") renderPreview(); });
-document.getElementById("ft").textContent = "hash " + GENESIS_HASH.slice(0, 10) + "…";
 </script>
 </body>
 </html>
