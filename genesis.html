@@ -157,7 +157,7 @@
   <div class="rec-body">
     <div class="bits" id="bits" aria-label="the genesis hash as 256 binary digits"></div>
     <div class="rec-info">
-      <div class="hash" id="ghash">0x7451a60c06684a3293bab82d373bcdb1c32f755b14bff590780cde8cafc40a32</div>
+      <div class="hash" id="ghash">0x8ea9b9d9c7f5fd58b7bda558b8ec4ed7644d5aaf27e4e7f1e0e93fd9a047ee05</div>
       <p>The hash <em>is</em> the artwork — keccak256 of the badge art itself, shown here the way the badge writes everything: in binary. It is burned immutably into every deployment on every chain, and each contract proves its stored art matches it with a public <code>verifyArt()</code>. No server, no IPFS, no domain. The series lives exactly as long as the chains do, and every leg traces back to WATTxchain.</p>
       <button class="copybtn" id="copyhash">Copy hash</button>
     </div>
@@ -205,17 +205,17 @@
 </div></footer>
 
 <script>
-const GENESIS_HASH = "0x7451a60c06684a3293bab82d373bcdb1c32f755b14bff590780cde8cafc40a32";
+const GENESIS_HASH = "0x8ea9b9d9c7f5fd58b7bda558b8ec4ed7644d5aaf27e4e7f1e0e93fd9a047ee05";
 // contract/renderer addresses land here as each chain deploys
 const CHAINS = [
   { key:"wtx",  name:"WATTxchain",   genesis:true, pay:"100k WTX · 100k WATT", logo:"img:art/wtx.png",
     rpc:"https://rpc-wtx.wattxchange.app",
-    badge:"0xf8710360d155318bfbe14a52b7cd0f48734501d6",
-    renderer:"0xa61ddc1455b9511c512573bb40396eb0001783af", status:"live" },
+    badge:"0xf329299a2031521fc507466989e2796e54216d9a",
+    renderer:"0x646299e3e9d0b43de2b9024b2fb1a065d95c2bb2", status:"live" },
   { key:"alt",  name:"Altcoinchain", pay:"100k WATT", logo:"img:art/alt.png",
     rpc:"https://rpc.wattxchange.app",
-    badge:"0xfa3ba231cEE51e5E5574fC86Faa9D5c9dff3B07F",
-    renderer:"0xC8cC3F9F5A69f692AD8A6a1e547B3078FD3Ee145", status:"live" },
+    badge:"0x75815ceCB631f40A702cc7235dDAdf8adfeBe398",
+    renderer:"0x06B9bf82fae6a12b397c3e1F24f50c4C295D2552", status:"live" },
   { key:"pol",  name:"Polygon",      pay:"100k WATT · POL", logo:"img:art/polygon.svg",
     rpc:"https://polygon-bor-rpc.publicnode.com", badge:"", renderer:"", status:"queued",
     explorer:"https://polygonscan.com/address/" },
