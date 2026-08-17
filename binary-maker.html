@@ -69,20 +69,26 @@
       <div class="drop" id="drop">drop an image here<br>or click to choose a file</div>
       <input type="file" id="file" accept="image/*" hidden>
 
-      <label>— or load an NFT —</label>
+      <label>— or use one of your NFTs —</label>
+      <button class="btn ghost" id="connect">Connect wallet</button>
       <select id="chain">
-        <option value="https://polygon-bor-rpc.publicnode.com">Polygon</option>
-        <option value="https://ethereum-rpc.publicnode.com">Ethereum</option>
-        <option value="https://base-rpc.publicnode.com">Base</option>
-        <option value="https://arbitrum-one-rpc.publicnode.com">Arbitrum</option>
-        <option value="https://rpc.wattxchange.app">Altcoinchain</option>
-        <option value="https://rpc-wtx.wattxchange.app">WATTx</option>
+        <option value="https://polygon-bor-rpc.publicnode.com" data-chain="137">Polygon</option>
+        <option value="https://ethereum-rpc.publicnode.com" data-chain="1">Ethereum</option>
+        <option value="https://base-rpc.publicnode.com" data-chain="8453">Base</option>
+        <option value="https://arbitrum-one-rpc.publicnode.com" data-chain="42161">Arbitrum</option>
+        <option value="https://rpc.wattxchange.app" data-chain="2330">Altcoinchain</option>
+        <option value="https://rpc-wtx.wattxchange.app" data-chain="22356">WATTx</option>
       </select>
-      <label>contract address</label>
-      <input type="text" id="caddr" placeholder="0x…">
-      <label>token id</label>
-      <input type="text" id="ctid" placeholder="1">
-      <button class="btn ghost" id="loadnft">Load NFT</button>
+      <label>collection</label>
+      <select id="coll"></select>
+      <div id="mine" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+      <details style="margin-top:12px"><summary style="color:var(--dim);font:600 12px var(--mono);cursor:pointer">ADVANCED: any contract</summary>
+        <label>contract address</label>
+        <input type="text" id="caddr" placeholder="0x…">
+        <label>token id</label>
+        <input type="text" id="ctid" placeholder="1">
+        <button class="btn ghost" id="loadnft">Load NFT</button>
+      </details>
 
       <h2 style="margin-top:24px">Binary</h2>
       <label>digit columns: <span id="colsv">96</span></label>
@@ -112,7 +118,22 @@ const G0 = "M3 3h3v1h-3zM3 4h1v1h-1zM6 4h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM2 6h1v1
 const G1 = "M2 3h4v1h-4zM4 4h2v1h-2zM4 5h2v1h-2zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2zM4 10h2v1h-2zM2 11h6v1h-6z";
 const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]; // 4x4 ordered dither
 
-let srcImg = null, outSVG = null;
+let srcImg = null, outSVG = null, wallet = null;
+
+// known collections per chain — your tokens are listed automatically
+const COLLECTIONS = {
+  "137": [
+    { name: "Mining Game NFT (classic)", addr: "0x970a8b10147e3459d3cbf56329b76ac18d329728", erc1155: true, ids: [1,2,3,4,5] },
+  ],
+  "2330": [
+    { name: "100K WATT Club", addr: "0x75815ceCB631f40A702cc7235dDAdf8adfeBe398" },
+    { name: "Mining Game NFT (classic)", addr: "0xf9670e5D46834561813CA79854B3d7147BBbFfb2", erc1155: true, ids: [1,2,3,4,5] },
+  ],
+  "22356": [
+    { name: "100K WATT Club", addr: "" },
+  ],
+  "1": [], "8453": [], "42161": [],
+};
 const $ = id => document.getElementById(id);
 const status = (m, err) => { $('status').innerHTML = err ? `<span class="err">${m}</span>` : m; };
 
@@ -142,6 +163,92 @@ function decStr(hex) {
   let s=''; const raw = b.slice(o+64, o+64+l);
   for (let i=0;i<raw.length;i+=2) s += String.fromCharCode(parseInt(raw.substr(i,2),16));
   return decodeURIComponent(escape(s)); // utf8
+}
+$('connect').onclick = async () => {
+  if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
+  const acc = await window.ethereum.request({ method: 'eth_requestAccounts' });
+  wallet = acc[0];
+  $('connect').textContent = wallet.slice(0,6) + '…' + wallet.slice(-4);
+  fillColls(); listMine();
+};
+function fillColls() {
+  const cid = $('chain').selectedOptions[0].dataset.chain;
+  const cs = (COLLECTIONS[cid] || []).filter(c => c.addr && !c.skip);
+  $('coll').innerHTML = cs.map((c,i) => `<option value="${i}">${c.name}</option>`).join('') || '<option>no known collections — use advanced</option>';
+}
+$('chain').onchange = () => { fillColls(); listMine(); };
+$('coll').onchange = () => listMine();
+async function listMine() {
+  const box = $('mine'); box.innerHTML = '';
+  if (!wallet) return;
+  const cid = $('chain').selectedOptions[0].dataset.chain, rpc = $('chain').value;
+  const c = (COLLECTIONS[cid] || []).filter(x => x.addr && !x.skip)[+$('coll').value];
+  if (!c) return;
+  status('finding your tokens…');
+  const me = wallet.slice(2).padStart(64, '0');
+  const found = [];
+  try {
+    if (c.erc1155) {
+      for (const id of c.ids) {
+        const bal = BigInt(await ethCall(rpc, c.addr, '0x00fdd58e' + me + BigInt(id).toString(16).padStart(64,'0')));
+        if (bal > 0n) found.push(id);
+      }
+    } else {
+      const bal = Number(BigInt(await ethCall(rpc, c.addr, '0x70a08231' + me)));
+      // ERC721Enumerable: tokenOfOwnerByIndex
+      for (let i = 0; i < Math.min(bal, 24); i++) {
+        try {
+          const tid = BigInt(await ethCall(rpc, c.addr, '0x2f745c59' + me + BigInt(i).toString(16).padStart(64,'0')));
+          found.push(Number(tid));
+        } catch(e) { break; } // not enumerable
+      }
+      if (bal > 0 && !found.length) {
+        // not enumerable — find the tokens by Transfer events instead
+        status('scanning transfer history…');
+        const logs = await (async () => {
+          const r = await fetch(rpc, { method:'POST', headers:{'content-type':'application/json'},
+            body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getLogs',params:[{address:c.addr,fromBlock:'0x0',toBlock:'latest',
+              topics:['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',null,'0x'+me]}]}) });
+          return (await r.json()).result || [];
+        })();
+        const ids = [...new Set(logs.map(l => BigInt(l.topics[3])))];
+        for (const tid of ids) {
+          try {
+            const owner = '0x' + (await ethCall(rpc, c.addr, '0x6352211e' + tid.toString(16).padStart(64,'0'))).slice(-40);
+            if (owner.toLowerCase() === wallet.toLowerCase()) found.push(Number(tid));
+          } catch(e) {}
+        }
+      }
+    }
+  } catch(e) { status('lookup failed: ' + e.message, 1); return; }
+  if (!found.length) { status('no tokens of this collection in your wallet on this chain'); return; }
+  status(`${found.length} of yours — click one`);
+  for (const id of found) {
+    const b = document.createElement('button');
+    b.className = 'btn ghost'; b.style.width = 'auto'; b.style.margin = '0'; b.style.padding = '7px 12px';
+    b.textContent = '#' + id;
+    b.onclick = () => loadToken(rpc, c.addr, BigInt(id), c.erc1155);
+    box.appendChild(b);
+  }
+}
+async function loadToken(rpc, addr, tid, is1155) {
+  try {
+    status('reading token from chain…');
+    const sel = is1155 ? '0x0e89341c' : '0xc87b56dd'; // uri(id) : tokenURI(id)
+    let uri = decStr(await ethCall(rpc, addr, sel + tid.toString(16).padStart(64,'0')));
+    uri = uri.replace('{id}', tid.toString(16).padStart(64,'0'));
+    let meta;
+    if (uri.startsWith('data:')) meta = JSON.parse(uri.includes('base64,') ? atob(uri.split('base64,')[1]) : decodeURIComponent(uri.split(',')[1]));
+    else meta = await (await fetch(ipfs(uri))).json();
+    let img = meta.image || meta.image_url;
+    if (!img) throw new Error('no image in metadata');
+    status('loading image…');
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => { srcImg = el; status(`loaded ${meta.name || 'NFT'}`); make(); };
+    el.onerror = () => status('image blocked cross-origin — save it and upload instead', 1);
+    el.src = img.startsWith('data:') ? img : ipfs(img);
+  } catch(e) { status('load failed: ' + e.message, 1); }
 }
 $('loadnft').onclick = async () => {
   try {
@@ -226,6 +333,7 @@ $('dlpng').onclick = () => {
   };
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(outSVG)));
 };
+fillColls();
 </script>
 </body>
 </html>
