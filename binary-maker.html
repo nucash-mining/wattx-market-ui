@@ -79,6 +79,7 @@
         <option value="https://arbitrum-one-rpc.publicnode.com" data-chain="42161">Arbitrum</option>
         <option value="https://rpc.wattxchange.app" data-chain="2330">Altcoinchain</option>
         <option value="https://rpc-wtx.wattxchange.app" data-chain="22356">WATTx</option>
+        <option value="https://rpc.soniclabs.com" data-chain="146">Sonic</option>
       </select>
       <label>collection</label>
       <select id="coll"></select>
@@ -132,6 +133,12 @@ const MINT_CHAINS = {
   '0x89':  { name: 'Polygon', addr: '', // deploys on the next gas dip
     add: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
            rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] } },
+  '0x2105': { name: 'Base', addr: '',
+    add: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+           rpcUrls: ['https://base-rpc.publicnode.com'], blockExplorerUrls: ['https://basescan.org'] } },
+  '0x92':  { name: 'Sonic', addr: '',
+    add: { chainId: '0x92', chainName: 'Sonic', nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18 },
+           rpcUrls: ['https://rpc.soniclabs.com'], blockExplorerUrls: ['https://sonicscan.org'] } },
 };
 const FALLBACK_MINT = '0x91a';
 let walletChain = null;
@@ -161,7 +168,7 @@ const COLLECTIONS = {
   "22356": [
     { name: "100K WATT Club", addr: "0xf7e47bd99554c14991682c7be937d735da93dfc8", display: true },
   ],
-  "1": [], "8453": [], "42161": [],
+  "1": [], "8453": [], "42161": [], "146": [],
 };
 const $ = id => document.getElementById(id);
 const status = (m, err) => { $('status').innerHTML = err ? `<span class="err">${m}</span>` : m; };
