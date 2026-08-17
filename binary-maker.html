@@ -144,8 +144,8 @@ function updateMintBtn() {
   $('mint').textContent = 'Mint on ' + tgt.name + (tgt.switchNeeded && walletChain ? ' (switches wallet)' : '');
 }
 if (window.ethereum) {
-  window.ethereum.request({ method: 'eth_chainId' }).then(c => { walletChain = c; updateMintBtn(); }).catch(()=>{});
-  window.ethereum.on?.('chainChanged', c => { walletChain = c; updateMintBtn(); });
+  window.ethereum.request({ method: 'eth_chainId' }).then(c => { walletChain = c.toLowerCase(); updateMintBtn(); }).catch(()=>{});
+  window.ethereum.on?.('chainChanged', c => { walletChain = c.toLowerCase(); updateMintBtn(); });
 }
 
 // known collections per chain — your tokens are listed automatically
@@ -154,7 +154,7 @@ const COLLECTIONS = {
     { name: "Mining Game NFT (classic)", addr: "0x970a8b10147e3459d3cbf56329b76ac18d329728", erc1155: true, ids: [1,2,3,4,5] },
   ],
   "2330": [
-    { name: "Binary Maker", addr: "0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107" },
+    { name: "Binary Maker", addr: "0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107", display: true },
     { name: "100K WATT Club", addr: "0x80A0C4E85C95814287649F7Df558697ae411f2B8" },
     { name: "Mining Game NFT (classic)", addr: "0xf9670e5D46834561813CA79854B3d7147BBbFfb2", erc1155: true, ids: [1,2,3,4,5] },
   ],
@@ -197,6 +197,8 @@ $('connect').onclick = async () => {
   if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
   const acc = await window.ethereum.request({ method: 'eth_requestAccounts' });
   wallet = acc[0];
+  walletChain = (await window.ethereum.request({ method: 'eth_chainId' })).toLowerCase();
+  updateMintBtn();
   $('connect').textContent = wallet.slice(0,6) + '…' + wallet.slice(-4);
   fillColls(); listMine();
 };
@@ -256,21 +258,36 @@ async function listMine() {
     const b = document.createElement('button');
     b.className = 'btn ghost'; b.style.width = 'auto'; b.style.margin = '0'; b.style.padding = '7px 12px';
     b.textContent = '#' + id;
-    b.onclick = () => loadToken(rpc, c.addr, BigInt(id), c.erc1155);
+    b.onclick = () => loadToken(rpc, c.addr, BigInt(id), c.erc1155, c.display);
     box.appendChild(b);
   }
 }
-async function loadToken(rpc, addr, tid, is1155) {
+async function loadToken(rpc, addr, tid, is1155, displayOnly) {
   try {
     status('reading token from chain…');
     const sel = is1155 ? '0x0e89341c' : '0xc87b56dd'; // uri(id) : tokenURI(id)
     let uri = decStr(await ethCall(rpc, addr, sel + tid.toString(16).padStart(64,'0')));
     uri = uri.replace('{id}', tid.toString(16).padStart(64,'0'));
     let meta;
-    if (uri.startsWith('data:')) meta = JSON.parse(uri.includes('base64,') ? atob(uri.split('base64,')[1]) : decodeURIComponent(uri.split(',')[1]));
+    if (uri.startsWith('data:')) {
+      const payload = uri.slice(uri.indexOf(',') + 1);
+      let txt = uri.includes('base64,') ? atob(payload) : payload;
+      if (!txt.trim().startsWith('{')) { try { txt = decodeURIComponent(txt); } catch(e) {} }
+      meta = JSON.parse(txt);
+    }
     else meta = await (await fetch(ipfs(uri))).json();
     let img = meta.image || meta.image_url;
     if (!img) throw new Error('no image in metadata');
+    if (displayOnly) {
+      // this IS already binary art — show it as-is
+      const payload = img.slice(img.indexOf(',') + 1);
+      outSVG = img.includes('base64,') ? atob(payload) : payload;
+      $('stage').innerHTML = outSVG;
+      $('dlsvg').disabled = $('dlpng').disabled = false;
+      $('mint').disabled = true;
+      status(`${meta.name || 'Binary piece'} — your on-chain original`);
+      return;
+    }
     status('loading image…');
     const el = new Image();
     el.crossOrigin = 'anonymous';
@@ -286,10 +303,25 @@ $('loadnft').onclick = async () => {
     const data = '0xc87b56dd' + tid.toString(16).padStart(64,'0');
     let uri = decStr(await ethCall(rpc, addr, data));
     let meta;
-    if (uri.startsWith('data:')) meta = JSON.parse(uri.includes('base64,') ? atob(uri.split('base64,')[1]) : decodeURIComponent(uri.split(',')[1]));
+    if (uri.startsWith('data:')) {
+      const payload = uri.slice(uri.indexOf(',') + 1);
+      let txt = uri.includes('base64,') ? atob(payload) : payload;
+      if (!txt.trim().startsWith('{')) { try { txt = decodeURIComponent(txt); } catch(e) {} }
+      meta = JSON.parse(txt);
+    }
     else meta = await (await fetch(ipfs(uri))).json();
     let img = meta.image || meta.image_url;
     if (!img) throw new Error('no image in metadata');
+    if (displayOnly) {
+      // this IS already binary art — show it as-is
+      const payload = img.slice(img.indexOf(',') + 1);
+      outSVG = img.includes('base64,') ? atob(payload) : payload;
+      $('stage').innerHTML = outSVG;
+      $('dlsvg').disabled = $('dlpng').disabled = false;
+      $('mint').disabled = true;
+      status(`${meta.name || 'Binary piece'} — your on-chain original`);
+      return;
+    }
     status('loading image…');
     const el = new Image();
     el.crossOrigin = 'anonymous';
