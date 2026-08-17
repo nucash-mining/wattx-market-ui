@@ -80,6 +80,7 @@
         <option value="https://rpc.wattxchange.app" data-chain="2330">Altcoinchain</option>
         <option value="https://rpc-wtx.wattxchange.app" data-chain="22356">WATTx</option>
         <option value="https://rpc.soniclabs.com" data-chain="146">Sonic</option>
+        <option value="https://optimism-rpc.publicnode.com" data-chain="10">Optimism</option>
       </select>
       <label>collection</label>
       <select id="coll"></select>
@@ -133,13 +134,13 @@ const MINT_CHAINS = {
   '0x91a': { name: 'Altcoinchain', addr: '0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107',
     add: { chainId: '0x91a', chainName: 'Altcoinchain', nativeCurrency: { name: 'Altcoin', symbol: 'ALT', decimals: 18 },
            rpcUrls: ['https://rpc.wattxchange.app'], blockExplorerUrls: ['https://alt-exp.wattxchange.app'] } },
-  '0x89':  { name: 'Polygon', addr: '', // deploys on the next gas dip
+  '0x89':  { name: 'Polygon', addr: '0x24E6760195eB6413d229652BC6d281b0863bB327',
     add: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
            rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] } },
   '0x2105': { name: 'Base', addr: '0xCe347180C3A45151C10366Da43fD822289ebB075',
     add: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
            rpcUrls: ['https://base-rpc.publicnode.com'], blockExplorerUrls: ['https://basescan.org'] } },
-  '0x92':  { name: 'Sonic', addr: '',
+  '0x92':  { name: 'Sonic', addr: '0x42064C6Eb7d609E8cBddCcfddD607CCca887BB94',
     add: { chainId: '0x92', chainName: 'Sonic', nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18 },
            rpcUrls: ['https://rpc.soniclabs.com'], blockExplorerUrls: ['https://sonicscan.org'] } },
   '0xa':   { name: 'Optimism', addr: '',
@@ -178,6 +179,8 @@ if (window.ethereum) {
 // known collections per chain — your tokens are listed automatically
 const COLLECTIONS = {
   "137": [
+    { name: "Binary Maker", addr: "0x24E6760195eB6413d229652BC6d281b0863bB327", display: true },
+    { name: "100K WATT Club", addr: "0x20cb5AF1D352C5384c25F25777f34B4650906437", display: true },
     { name: "Mining Game NFT (classic)", addr: "0x970a8b10147e3459d3cbf56329b76ac18d329728", erc1155: true, ids: [1,2,3,4,5] },
   ],
   "2330": [
