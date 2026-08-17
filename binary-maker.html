@@ -8,6 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000004'/><text x='16' y='23' text-anchor='middle' font-size='15' fill='%23ffd24a' font-family='monospace' font-weight='bold'>01</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{--void:#000004;--ink:#0a0a16;--line:#191926;--gold:#ffd24a;--gold-deep:#8a6a1d;
@@ -102,6 +103,10 @@
         <button class="btn ghost" id="dlsvg" disabled>Save SVG</button>
         <button class="btn ghost" id="dlpng" disabled>Save PNG</button>
       </div>
+      <h2 style="margin-top:24px">Mint it</h2>
+      <label>piece name</label>
+      <input type="text" id="pname" maxlength="64" placeholder="My Binary …">
+      <button class="btn" id="mint" disabled>Mint on Altcoinchain</button>
       <div class="status" id="status"></div>
     </div>
 
@@ -118,7 +123,8 @@ const G0 = "M3 3h3v1h-3zM3 4h1v1h-1zM6 4h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM2 6h1v1
 const G1 = "M2 3h4v1h-4zM4 4h2v1h-2zM4 5h2v1h-2zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2zM4 10h2v1h-2zM2 11h6v1h-6z";
 const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]; // 4x4 ordered dither
 
-let srcImg = null, outSVG = null, wallet = null;
+let srcImg = null, outSVG = null, outCells = null, outCols = 0, outRows = 0, wallet = null;
+const BINARY_ART = { chainId: '0x91a', addr: '0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107', rpc: 'https://rpc.wattxchange.app', explorer: 'https://alt-exp.wattxchange.app' };
 
 // known collections per chain — your tokens are listed automatically
 const COLLECTIONS = {
@@ -126,6 +132,7 @@ const COLLECTIONS = {
     { name: "Mining Game NFT (classic)", addr: "0x970a8b10147e3459d3cbf56329b76ac18d329728", erc1155: true, ids: [1,2,3,4,5] },
   ],
   "2330": [
+    { name: "Binary Maker", addr: "0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107" },
     { name: "100K WATT Club", addr: "0x75815ceCB631f40A702cc7235dDAdf8adfeBe398" },
     { name: "Mining Game NFT (classic)", addr: "0xf9670e5D46834561813CA79854B3d7147BBbFfb2", erc1155: true, ids: [1,2,3,4,5] },
   ],
@@ -277,11 +284,16 @@ $('make').onclick = () => make();
 
 function make() {
   if (!srcImg) { status('load an image first', 1); return; }
-  const cols = +$('cols').value;
+  let cols = +$('cols').value;
   const boost = $('boost').value / 10;
   const inv = $('invert').checked;
-  // cells are 8x14 — keep the picture's aspect
-  const rows = Math.max(8, Math.round(srcImg.height / srcImg.width * cols * 8 / 14));
+  // cells are 8x14 — keep the picture's aspect; auto-fit the on-chain cap
+  let rows = Math.max(8, Math.round(srcImg.height / srcImg.width * cols * 8 / 14));
+  while (cols > 16 && cols * rows > 6100) {
+    cols -= 8;
+    rows = Math.max(8, Math.round(srcImg.height / srcImg.width * cols * 8 / 14));
+  }
+  if (+$('cols').value !== cols) { $('cols').value = cols; $('colsv').textContent = cols + ' (auto-fit for minting)'; }
   const cv = document.createElement('canvas');
   cv.width = cols; cv.height = rows;
   const cx = cv.getContext('2d', { willReadFrequently: true });
@@ -291,6 +303,7 @@ function make() {
   catch(e) { status('image is cross-origin tainted — save it locally and upload instead', 1); return; }
 
   const W = cols*8, H = rows*14;
+  const cells = new Uint8Array(cols * rows * 4).fill(0xff);
   let uses = '';
   let n = 0;
   for (let r = 0; r < rows; r++) {
@@ -305,6 +318,8 @@ function make() {
       if (inv) bit = 1 - bit;
       const hex = '#' + [R,Gc,B].map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
       uses += `<use href="#g${bit}" x="${c*8}" y="${r*14}" fill="${hex}"/>`;
+      const ci = (r*cols + c) * 4;
+      cells[ci] = Math.round(R); cells[ci+1] = Math.round(Gc); cells[ci+2] = Math.round(B); cells[ci+3] = bit;
       n++;
     }
   }
@@ -312,8 +327,10 @@ function make() {
     `<rect width="${W}" height="${H}" fill="#000004"/>` +
     `<defs><path id="g0" d="${G0}"/><path id="g1" d="${G1}"/></defs>` + uses + '</svg>';
   $('stage').innerHTML = outSVG;
+  outCells = cells; outCols = cols; outRows = rows;
   $('dlsvg').disabled = $('dlpng').disabled = false;
-  status(`${n.toLocaleString()} digits · ${cols}×${rows} grid · ${(outSVG.length/1024).toFixed(0)}KB SVG`);
+  $('mint').disabled = false;
+  status(`${n.toLocaleString()} digits · ${cols}×${rows} grid · ${(outSVG.length/1024).toFixed(0)}KB SVG — ready to mint`);
 }
 
 // ---- export ----
@@ -334,6 +351,35 @@ $('dlpng').onclick = () => {
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(outSVG)));
 };
 fillColls();
+
+$('mint').onclick = async () => {
+  try {
+    if (!outCells) { status('make it binary first', 1); return; }
+    if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
+    const name = ($('pname').value || '').replace(/["\\\x00-\x1f]/g, '').slice(0, 64);
+    status('switching wallet to Altcoinchain…');
+    try {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BINARY_ART.chainId }] });
+    } catch (e) {
+      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
+        chainId: BINARY_ART.chainId, chainName: 'Altcoinchain',
+        nativeCurrency: { name: 'Altcoin', symbol: 'ALT', decimals: 18 },
+        rpcUrls: [BINARY_ART.rpc], blockExplorerUrls: [BINARY_ART.explorer] }] });
+    }
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const art = new ethers.Contract(BINARY_ART.addr,
+      ['function mint(uint16 cols, uint16 rows, string name_, bytes cells) returns (uint256)',
+       'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'], signer);
+    status('confirm the mint in your wallet…');
+    const tx = await art.mint(outCols, outRows, name, outCells);
+    status('minting… ' + tx.hash.slice(0, 14) + '…');
+    const rcpt = await tx.wait();
+    let tokenId = '?';
+    for (const lg of rcpt.logs) { try { const p = art.interface.parseLog(lg); if (p?.name === 'Transfer') tokenId = p.args.tokenId.toString(); } catch(e){} }
+    status(`✓ minted Binary #${tokenId} on Altcoinchain — fully on-chain, forever`);
+  } catch (e) { status('mint failed: ' + (e.shortMessage || e.message).slice(0, 90), 1); }
+};
 </script>
 </body>
 </html>
