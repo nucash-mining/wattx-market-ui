@@ -175,7 +175,7 @@
     <a data-view="ordinals">Ordinals</a>
     <a data-view="mine">My items</a>
     <a data-view="activity">Activity</a>
-    <a href="genesis.html" style="color:#ffd24a">⚡ 100K Club</a>
+    <a href="genesis.html?v=3" style="color:#ffd24a">⚡ 100K Club</a>
   </nav>
   <div class="netsel">
     <button class="netbtn" id="netbtn"><span class="ndot" id="dot"></span><span id="netlabel">WATTx</span><span class="chev">▾</span></button>
@@ -349,6 +349,8 @@ const CHAINS = {
   wattx:    { name:'WATTx', sub:'Ordinals + NFTs', type:'evm', status:'live', color:'#ffd400',
               chainId:'0x5754', symbol:'WTX', decimals:18, rpc:'https://rpc-wtx.wattxchange.app',
               explorer:'https://wtx-explorer.wattxchange.app' },
+  alt:      { name:'Altcoinchain', sub:'Binary Maker · 100K Club', type:'evm', status:'soon', color:'#9b4dff', chainId:'0x91a', symbol:'ALT',
+              note:'Minting on Altcoinchain is LIVE in Binary Maker and the 100K WATT Club — marketplace trading here is coming soon.' },
   ethereum: { name:'Ethereum', sub:'EVM', type:'evm', status:'soon', color:'#627eea', chainId:'0x1', symbol:'ETH' },
   bsc:      { name:'BNB Chain', sub:'EVM', type:'evm', status:'soon', color:'#f0b90b', chainId:'0x38', symbol:'BNB' },
   polygon:  { name:'Polygon', sub:'EVM', type:'evm', status:'soon', color:'#8247e5', chainId:'0x89', symbol:'POL' },
@@ -430,9 +432,9 @@ async function selectChain(k){
   const c=CHAINS[k];
   if(c.status==='soon'){
     setActiveNet(k);
-    const how = c.type==='utxo'
+    const how = c.note ? c.note : (c.type==='utxo'
       ? `${c.name} ordinals will connect through ${c.wallet}. Trading and inscribing on ${c.name} is coming soon.`
-      : `The marketplace isn't deployed on ${c.name} yet — its contracts are coming soon. Trade on WATTx for now.`;
+      : `The marketplace isn't deployed on ${c.name} yet — its contracts are coming soon. Trade on WATTx for now.`);
     toast(how);
     return;
   }
