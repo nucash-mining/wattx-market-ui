@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WTXScan — WATTx Blockchain Explorer</title>
+<style>
+  :root{
+    --navy:#21325b; --navy2:#111c3a; --blue:#0784c3; --blue-d:#066a9c;
+    --body:#f8f9fa; --card:#ffffff; --line:#e9ecef; --ink:#212529; --muted:#6c757d;
+    --soft:#f8f9fa; --good:#00a186; --good-bg:#e6f5f2; --bad:#dc3545; --bad-bg:#fbeaec;
+    --warn:#b47d00; --warn-bg:#fdf6e3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--body);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+  a{color:var(--blue);text-decoration:none} a:hover{color:var(--blue-d)}
+  .container{max-width:87rem;margin:0 auto;padding:0 1rem}
+  /* navbar */
+  .nav{background:#fff;border-bottom:1px solid var(--line)}
+  .nav .container{display:flex;align-items:center;justify-content:space-between;height:3.2rem;gap:1rem}
+  .logo{display:flex;align-items:center;gap:.45rem;font-size:1.15rem;font-weight:600;color:var(--ink);cursor:pointer;white-space:nowrap}
+  .logo svg{width:1.35rem;height:1.35rem}
+  .logo b{color:var(--blue);font-weight:700}
+  .navlinks{display:flex;gap:1.4rem;font-size:.86rem;align-items:center}
+  .navlinks a{color:var(--ink)} .navlinks a:hover{color:var(--blue)}
+  .chainchip{font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:.15rem .6rem;background:var(--soft);white-space:nowrap}
+  /* hero */
+  .hero{background:linear-gradient(180deg,var(--navy) 0%,var(--navy2) 100%);padding:1.8rem 0 4.2rem}
+  .hero h1{color:#fff;font-size:1.15rem;font-weight:600;margin:0 0 .8rem}
+  .herosearch{display:flex;background:#fff;border-radius:.5rem;overflow:hidden;max-width:44rem;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .herosearch input{flex:1;border:0;outline:0;padding:.75rem 1rem;font-size:.9rem;font-family:inherit;min-width:0}
+  .herosearch button{border:0;background:var(--blue);color:#fff;padding:0 1.15rem;cursor:pointer;display:flex;align-items:center}
+  .herosearch button:hover{background:var(--blue-d)}
+  .herosearch button svg{width:1.05rem;height:1.05rem}
+  /* subpage search strip */
+  .substrip{background:var(--navy);padding:.8rem 0}
+  .substrip .herosearch{max-width:38rem;box-shadow:none}
+  .substrip .herosearch input{padding:.5rem .9rem;font-size:.85rem}
+  /* stats card overlapping hero */
+  .statwrap{margin-top:-3rem}
+  .statcard{background:var(--card);border:1px solid var(--line);border-radius:.6rem;box-shadow:0 .3rem 1rem rgba(33,50,91,.06);display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))}
+  .statcell{padding:1rem 1.2rem;border-right:1px solid var(--line);display:flex;gap:.8rem;align-items:center}
+  .statcell:last-child{border-right:0}
+  .statcell svg{width:1.5rem;height:1.5rem;color:var(--muted);flex:none}
+  .statcell .k{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .statcell .v{font-size:1rem;font-weight:600;font-variant-numeric:tabular-nums}
+  /* cards */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
+  .cardhead{padding:.8rem 1.2rem;border-bottom:1px solid var(--line);font-size:.92rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+  .cardfoot{padding:.6rem 1.2rem;border-top:1px solid var(--line);text-align:center}
+  .cardfoot a{font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .cardfoot a:hover{color:var(--blue)}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:1.2rem}
+  @media(max-width:900px){.twocol{grid-template-columns:1fr}}
+  /* home list rows */
+  .rowlist{padding:0 1.2rem}
+  .lrow{display:flex;align-items:center;gap:.9rem;padding:.7rem 0;border-bottom:1px solid var(--line)}
+  .lrow:last-child{border-bottom:0}
+  .icbox{width:2.6rem;height:2.6rem;border-radius:.5rem;background:var(--soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:var(--muted);flex:none}
+  .lmain{flex:1;min-width:0}
+  .lmain .t{font-size:.86rem} .lmain .s{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .valpill{font-size:.72rem;border:1px solid var(--line);border-radius:.4rem;padding:.25rem .5rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* tables */
+  .tscroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th{text-align:left;padding:.7rem 1rem;font-size:.74rem;color:var(--ink);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--soft)}
+  td{padding:.65rem 1rem;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#fbfcfd}
+  .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:.8rem}
+  .muted{color:var(--muted)} .small{font-size:.78rem}
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:600;padding:.22rem .6rem;border-radius:.35rem;border:1px solid transparent}
+  .badge.ok{color:var(--good);background:var(--good-bg);border-color:#bfe5dd}
+  .badge.fail{color:var(--bad);background:var(--bad-bg);border-color:#f2c6cb}
+  .badge.pend{color:var(--warn);background:var(--warn-bg);border-color:#ecd9a0}
+  .badge.gray{color:var(--muted);background:var(--soft);border-color:var(--line)}
+  .methodpill{display:inline-block;max-width:7.5rem;overflow:hidden;text-overflow:ellipsis;font-size:.72rem;background:var(--soft);border:1px solid var(--line);border-radius:.35rem;padding:.2rem .5rem;color:var(--muted);vertical-align:middle}
+  /* detail kv */
+  .kv{font-size:.86rem}
+  .kv .r{display:grid;grid-template-columns:minmax(11rem,17rem) 1fr;padding:.7rem 1.2rem;border-bottom:1px solid var(--line)}
+  .kv .r:last-child{border-bottom:0}
+  .kv .k{color:var(--muted)}
+  .kv .v{overflow-wrap:anywhere}
+  @media(max-width:640px){.kv .r{grid-template-columns:1fr;gap:.15rem}}
+  .databox{background:var(--soft);border:1px solid var(--line);border-radius:.4rem;padding:.6rem .8rem;max-height:10rem;overflow:auto;overflow-wrap:anywhere}
+  .gasbar{display:inline-block;width:6rem;height:.35rem;background:var(--line);border-radius:99px;vertical-align:middle;margin-left:.5rem;overflow:hidden}
+  .gasbar i{display:block;height:100%;background:var(--good)}
+  /* page titles / pager */
+  .ptitle{font-size:1.15rem;font-weight:600;margin:1.4rem 0 .9rem;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+  .ptitle .sub{font-size:.85rem;color:var(--muted);font-weight:400}
+  .pager{display:inline-flex;gap:.3rem;align-items:center}
+  .pager a,.pager span.btn{font-size:.72rem;background:#eaf3f9;color:var(--blue);border-radius:.35rem;padding:.3rem .55rem;font-weight:600}
+  .pager span.btn{opacity:.4}
+  .copybtn{cursor:pointer;color:var(--muted);background:none;border:0;padding:0 .2rem;vertical-align:middle}
+  .copybtn:hover{color:var(--blue)}
+  .copybtn svg{width:.9rem;height:.9rem}
+  .notice{background:#eaf3f9;border:1px solid #cfe5f2;border-radius:.5rem;padding:.7rem 1rem;font-size:.82rem;color:#33607d;margin:1rem 0}
+  .err{background:var(--bad-bg);border:1px solid #f2c6cb;color:var(--bad);border-radius:.5rem;padding:.9rem 1.1rem;margin:1.4rem 0}
+  .spin{color:var(--muted);padding:3rem;text-align:center}
+  .logbox{border:1px solid var(--line);border-radius:.5rem;padding:.7rem .9rem;margin:.6rem 0;font-size:.78rem;overflow-wrap:anywhere;background:var(--card)}
+  footer{background:var(--navy2);color:#aab4cd;margin-top:3rem;padding:1.6rem 0;font-size:.8rem}
+  footer .container{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  footer a{color:#d5dced} footer a:hover{color:#fff}
+  .statusdot{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;background:var(--muted);margin-right:.35rem}
+  .statusdot.up{background:#28a745}.statusdot.down{background:var(--bad)}
+  #main{min-height:24rem}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="container">
+  <div class="logo" onclick="go('/')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#0784c3" stroke-width="1.6"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>
+    <span><b>WTX</b>Scan</span>
+  </div>
+  <div class="navlinks">
+    <a href="/" onclick="return go('/')">Home</a>
+    <a href="#/blocks" onclick="return go('/blocks')">Blocks</a>
+    <a href="#/txs" onclick="return go('/txs')">Transactions</a>
+    <a href="#/tokens" onclick="return go('/tokens')">Tokens</a>
+    <span class="chainchip"><span class="statusdot" id="dot"></span><span id="statusText">WATTx · 22356</span></span>
+  </div>
+</div></nav>
+
+<div id="searcharea"></div>
+<div class="container" id="main"><div class="spin">Loading…</div></div>
+
+<footer><div class="container">
+  <span>WTXScan — block explorer for <a href="https://wattx.org" target="_blank" rel="noopener">WATTx</a> (ALT · chain id 22356 · multi-algo PoW/PoS)</span>
+  <span>RPC: <a href="https://rpc-wtx.wattxchange.app" target="_blank" rel="noopener">rpc.wattxchange.app</a> · <a href="https://wattxchange.app" target="_blank" rel="noopener">WATTxchange</a></span>
+</div></footer>
+
+<script>
+const RPC = 'https://rpc-wtx.wattxchange.app';
+let rpcId = 1;
+async function rpc(method, params=[]) {
+  const r = await fetch(RPC, {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0', id:rpcId++, method, params})});
+  if (!r.ok) throw new Error('RPC HTTP '+r.status);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message||'RPC error');
+  return j.result;
+}
+async function rpcBatch(calls) {
+  const body = calls.map(c=>({jsonrpc:'2.0', id:rpcId++, method:c[0], params:c[1]}));
+  const r = await fetch(RPC, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
+  if (!r.ok) throw new Error('RPC HTTP '+r.status);
+  const j = await r.json();
+  const byId = {}; (Array.isArray(j)?j:[j]).forEach(x=>byId[x.id]=x);
+  return body.map(b=>{const x=byId[b.id]; return (!x||x.error)?null:x.result;});
+}
+
+const $ = id => document.getElementById(id);
+const hx = h => h==null?0:parseInt(h,16);
+const big = h => h==null?0n:BigInt(h);
+// Fractions: show dp decimals normally, but if the amount is smaller than
+// 10^-dp (all leading decimals zero), fall back to FULL precision so tiny
+// amounts (e.g. tokens like SCAM with supply 1.0) don't display as 0.
+function fmtFrac(w, base, dec, dp){
+  const full = (w % base).toString().padStart(dec,'0').replace(/0+$/,'');
+  if (!full) return '';
+  const head = full.slice(0, dp);
+  return /[1-9]/.test(head) ? head.replace(/0+$/,'') : full;
+}
+function fmtWtx(weiHex, dp=6) {
+  const w = big(weiHex); const i = w/10n**18n; const f = fmtFrac(w, 10n**18n, 18, dp);
+  return i.toLocaleString('en-US') + (f?'.'+f:'');
+}
+function fmtUnits(weiHex, dec, dp=6){
+  const w = big(weiHex); const base = 10n**BigInt(dec);
+  const i = w/base; const f = fmtFrac(w, base, dec, dp);
+  return i.toLocaleString('en-US') + (f?'.'+f:'');
+}
+function gwei(h){ return (Number(big(h))/1e9).toLocaleString('en-US',{maximumFractionDigits:2}); }
+function ago(ts){ const s=Math.max(0,Math.floor(Date.now()/1000-ts));
+  if(s<60)return s+' secs ago'; if(s<3600)return Math.floor(s/60)+' mins ago';
+  if(s<86400)return Math.floor(s/3600)+' hrs '+Math.floor(s%3600/60)+' mins ago';
+  return Math.floor(s/86400)+' days ago'; }
+function dt(ts){ return new Date(ts*1000).toUTCString().replace('GMT','UTC'); }
+function short(h,n=8){ return h ? h.slice(0,2+n)+'…'+h.slice(-6) : '—'; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hashrate(diff, bt){ if(!bt) return '—'; const h=diff/bt;
+  if(h>1e12) return (h/1e12).toFixed(2)+' TH/s'; if(h>1e9) return (h/1e9).toFixed(2)+' GH/s';
+  if(h>1e6) return (h/1e6).toFixed(2)+' MH/s'; return (h/1e3).toFixed(2)+' KH/s'; }
+const aLink = (a,n=8) => { if(!a) return '<span class="muted small">Contract Creation</span>';
+  const k = knownOf(a);
+  return `<a class="${k?'':'mono'}" href="#/address/${a}" onclick="return go('/address/${a}')" title="${a}">${k?esc(k.name):short(a,n)}</a>`; };
+const txLink = h => `<a class="mono" href="#/tx/${h}" onclick="return go('/tx/${h}')" title="${h}">${short(h,10)}</a>`;
+const bLink = n => `<a href="#/block/${n}" onclick="return go('/block/${n}')">${Number(n).toLocaleString('en-US')}</a>`;
+const copyBtn = t => `<button class="copybtn" title="Copy" onclick="navigator.clipboard.writeText('${t}');this.style.color='#00a186'">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>`;
+
+// Known WATTx contracts (verified on-chain). Keys lowercase.
+const KNOWN = {
+  '0xc4603e2582ae320857379819123dfbfd3093dcfa':{name:'WATT v2',cat:'token'},
+  '0x704f5efcde5edd87e767be78ba8faa6fab244bad':{name:'WattSwap (v1\u2192v2)',cat:'contract'},
+  '0x536cebbf7ff414edcd8590080f20db90aecf8541':{name:'WATT Multisig (2-of-2)',cat:'contract'},
+  '0x2cde3a01e3cdededdbbbf19cd07b899bf7d49770':{name:'100K WATT Club',cat:'nft'},
+  '0x00199cc367ee58b680022453e3a3a0092ae689d5':{name:'Club Badge Renderer',cat:'contract'},
+  '0x9baafde958d0de13043cbb4292e467eb00ed06b4':{name:'Mining Game Items',cat:'nft'},
+  '0xe9000a1ba29c3e87b4f964e9514ea4e8fd5d5749':{name:'WATT Staking Pool',cat:'contract'},
+  '0xd457a938f9869202e33acf98e44903acfb494efe':{name:'WATT Price Oracle',cat:'contract'},
+  '0x0239f289cca84e7bb899fe065ba452293d501355':{name:'Item Shop',cat:'contract'},
+  '0x7dcd7e01f4f407a01ef6af3e42165861c979b4c6':{name:'Mining Rig NFT',cat:'nft'},
+  '0x3a02971ceaf9b817e770c36e393a95542bc65df2':{name:'Pool Registry',cat:'contract'},
+  '0x9fab0fba9b458a7a0c9d60a26bc33f6e2695f179':{name:'Payout Hub',cat:'contract'},
+  '0x0176566fe72e5733008bfc68439fb2f3eb43901b':{name:'NFT Staking Pool',cat:'contract'},
+  '0xb38e119a70f621bf080f51e2a436bebc248cc0dc':{name:'Node Mining Engine',cat:'contract'},
+};
+const knownOf = a => a ? KNOWN[a.toLowerCase()] : null;
+
+const METHODS = {'0xa9059cbb':'Transfer','0x095ea7b3':'Approve','0x23b872dd':'Transfer From','0xd0e30db0':'Deposit','0x2e1a7d4d':'Withdraw','0x40c10f19':'Mint','0xa694fc3a':'Stake','0x3ccfd60b':'Withdraw','0x4e71d92d':'Claim','0x38ed1739':'Swap','0x7ff36ab5':'Swap','0x18cbafe5':'Swap','0x022c0d9f':'Swap','0xf305d719':'Add Liquidity','0xe8e33700':'Add Liquidity','0x02751cec':'Remove Liquidity','0xbaa2abde':'Remove Liquidity','0x60806040':'Create'};
+function methodOf(t){
+  if(!t.to) return 'Create';
+  if(!t.input || t.input==='0x') return 'Transfer';
+  return METHODS[t.input.slice(0,10)] || t.input.slice(0,10);
+}
+
+let statusUp = null, latestKnown = 0;
+function setStatus(up, txt){ if(up!==statusUp){ $('dot').className='statusdot '+(up?'up':'down'); statusUp=up; }
+  $('statusText').textContent = txt; }
+
+// ---------- routing (EIP-3091 paths) ----------
+function go(path){ location.hash = '#'+path; return false; }
+window.addEventListener('popstate', route); window.addEventListener('hashchange', route);
+function doSearch(){
+  const q = ($('q')?$('q').value:'').trim();
+  if(!q) return;
+  if(/^\d+$/.test(q)) go('/block/'+q);
+  else if(/^0x[0-9a-fA-F]{40}$/.test(q)) go('/address/'+q);
+  else if(/^0x[0-9a-fA-F]{64}$/.test(q)) lookupHash(q);
+  else alert('Search expects an address, tx hash, block hash or block number.');
+  if($('q')) $('q').value='';
+}
+const searchBox = big => `
+  <div class="herosearch">
+    <input id="q" placeholder="Search by Address / Txn Hash / Block / Block Hash" spellcheck="false">
+    <button onclick="doSearch()" title="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    </button>
+  </div>`;
+function mountSearch(isHome){
+  $('searcharea').innerHTML = isHome
+    ? `<div class="hero"><div class="container"><h1>WATTx Blockchain Explorer</h1>${searchBox(true)}</div></div>`
+    : `<div class="substrip"><div class="container">${searchBox(false)}</div></div>`;
+  $('q').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+}
+
+let refreshTimer = null;
+function route(){
+  if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; }
+  // legacy #/... hash links → path
+  const qp = new URLSearchParams(location.search).get('p');
+  const path = location.hash.startsWith('#/') ? location.hash.slice(1) : (qp || location.pathname);
+  const seg = path.replace(/\/+$/,'').split('/').filter(Boolean);
+  const [page, arg] = [seg[0]||'', seg[1]||''];
+  if(page==='block') { mountSearch(false); renderBlock(arg); }
+  else if(page==='tx') { mountSearch(false); renderTx(arg); }
+  else if(page==='address') { mountSearch(false); renderAddress(arg); }
+  else if(page==='token') { mountSearch(false); renderToken(arg); }
+  else if(page==='nft') { mountSearch(false); renderNFT(arg, (location.pathname.split('/')[3]||'1')); }
+  else if(page==='tokens') { mountSearch(false); renderTokens(); }
+  else if(page==='blocks') { mountSearch(false); renderBlocks(arg?parseInt(arg):null); }
+  else if(page==='txs') { mountSearch(false); renderTxs(); }
+  else { mountSearch(true); renderHome(); refreshTimer = setInterval(()=>renderHome(true), 15000); }
+}
+function fail(e){ $('main').innerHTML = `<div class="err">Error: ${esc(e.message||e)}</div>`; }
+async function lookupHash(h){
+  try{
+    const t = await rpc('eth_getTransactionByHash',[h]);
+    if(t) return go('/tx/'+h);
+    const b = await rpc('eth_getBlockByHash',[h,false]);
+    if(b) return go('/block/'+h);
+    $('main').innerHTML = '<div class="err">No transaction or block found for that hash.</div>';
+  }catch(e){ fail(e); }
+}
+
+// ---------- HOME ----------
+const icons = {
+  block:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  gas:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15M2 21h14M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg>`,
+  globe:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z"/></svg>`,
+  bolt:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>`
+};
+async function renderHome(quiet){
+  try{
+    const [latestHex, gasP] = await rpcBatch([['eth_blockNumber',[]],['eth_gasPrice',[]]]);
+    const latest = hx(latestHex); latestKnown = latest;
+    const nums = []; for(let i=0;i<10 && latest-i>=0;i++) nums.push(latest-i);
+    const blocks = (await rpcBatch(nums.map(n=>['eth_getBlockByNumber',['0x'+n.toString(16), true]]))).filter(Boolean);
+    let bt = 0;
+    if(blocks.length>1){ bt = (hx(blocks[0].timestamp)-hx(blocks[blocks.length-1].timestamp))/(blocks.length-1); }
+    const diff = blocks[0]?hx(blocks[0].difficulty):0;
+    const txs = [];
+    for(const b of blocks){ for(const t of (b.transactions||[])){ txs.push({t, ts:hx(b.timestamp)}); if(txs.length>=10) break; } if(txs.length>=10) break; }
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    $('main').innerHTML = `
+      <div class="statwrap"><div class="statcard">
+        <div class="statcell">${icons.block}<div><div class="k">Latest Block</div><div class="v">${latest.toLocaleString('en-US')}</div></div></div>
+        <div class="statcell">${icons.clock}<div><div class="k">Avg Block Time</div><div class="v">${bt?bt.toFixed(1)+'s':'—'}</div></div></div>
+        <div class="statcell">${icons.gas}<div><div class="k">Gas Price</div><div class="v">${gwei(gasP)} gwei</div></div></div>
+        <div class="statcell">${icons.globe}<div><div class="k">Difficulty</div><div class="v">${diff.toLocaleString('en-US')}</div></div></div>
+        <div class="statcell">${icons.bolt}<div><div class="k">Network Hashrate</div><div class="v">${hashrate(diff,bt)}</div></div></div>
+      </div></div>
+      <div class="twocol">
+        <div class="card">
+          <div class="cardhead">Latest Blocks</div>
+          <div class="rowlist">
+            ${blocks.slice(0,7).map(b=>`<div class="lrow">
+              <div class="icbox">Bk</div>
+              <div class="lmain"><div class="t">${bLink(hx(b.number))}</div><div class="s">${ago(hx(b.timestamp))}</div></div>
+              <div class="lmain"><div class="t small">Miner ${aLink(b.miner,6)}</div><div class="s">${(b.transactions||[]).length} txn${(b.transactions||[]).length===1?'':'s'} · ${((hx(b.timestamp)-((blocks.find(x=>hx(x.number)===hx(b.number)-1)&&hx(blocks.find(x=>hx(x.number)===hx(b.number)-1).timestamp))||hx(b.timestamp)))||'')} secs</div></div>
+              <span class="valpill">${hashrateCell(b)}</span>
+            </div>`).join('')}
+          </div>
+          <div class="cardfoot"><a href="#/blocks" onclick="return go('/blocks')">View all blocks →</a></div>
+        </div>
+        <div class="card">
+          <div class="cardhead">Latest Transactions</div>
+          <div class="rowlist">
+            ${txs.length?txs.slice(0,7).map(({t,ts})=>`<div class="lrow">
+              <div class="icbox">Tx</div>
+              <div class="lmain"><div class="t">${txLink(t.hash)}</div><div class="s">${ago(ts)}</div></div>
+              <div class="lmain"><div class="t small">From ${aLink(t.from,6)}</div><div class="s">To ${t.to?short(t.to,6):'Contract Creation'}</div></div>
+              <span class="valpill">${fmtWtx(t.value,4)} WTX</span>
+            </div>`).join(''):'<div class="lrow"><span class="muted small">No transactions in the last 10 blocks</span></div>'}
+          </div>
+          <div class="cardfoot"><a href="#/txs" onclick="return go('/txs')">View recent transactions →</a></div>
+        </div>
+      </div>
+      <div class="notice">WTXScan reads live from the public WATTx RPC. It keeps no historical index, so address pages show current on-chain state rather than full transaction history.</div>`;
+  }catch(e){ setStatus(false,'RPC unreachable'); if(!quiet) fail(e); }
+}
+function hashrateCell(b){ return hx(b.gasUsed)>0 ? (100*hx(b.gasUsed)/Math.max(1,hx(b.gasLimit))).toFixed(1)+'% gas' : 'empty'; }
+
+// ---------- BLOCK LIST ----------
+async function renderBlocks(start){
+  try{
+    const latest = hx(await rpc('eth_blockNumber')); latestKnown = latest;
+    if(start==null || isNaN(start)) start = latest;
+    start = Math.min(start, latest);
+    const N = 25;
+    const nums = []; for(let i=0;i<N && start-i>=0;i++) nums.push(start-i);
+    const blocks = (await rpcBatch(nums.map(n=>['eth_getBlockByNumber',['0x'+n.toString(16), false]]))).filter(Boolean);
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    const prev = Math.min(start+N, latest), next = start-N;
+    $('main').innerHTML = `
+      <div class="ptitle">Blocks <span class="sub">Block #${(start-N+1<0?0:start-N+1).toLocaleString('en-US')} to #${start.toLocaleString('en-US')} (of ${latest.toLocaleString('en-US')})</span></div>
+      <div class="card">
+        <div class="cardhead"><span class="muted small">Showing ${blocks.length} blocks</span>
+          <span class="pager">
+            ${start<latest?`<a href="#/blocks/${latest}" onclick="return go('/blocks/${latest}')">First</a><a href="#/blocks/${prev}" onclick="return go('/blocks/${prev}')">‹ Prev</a>`:'<span class="btn">First</span><span class="btn">‹ Prev</span>'}
+            ${next>=0?`<a href="#/blocks/${next}" onclick="return go('/blocks/${next}')">Next ›</a>`:'<span class="btn">Next ›</span>'}
+          </span></div>
+        <div class="tscroll"><table>
+          <thead><tr><th>Block</th><th>Age</th><th>Txn</th><th>Miner</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th>Hash</th></tr></thead>
+          <tbody>${blocks.map(b=>`<tr>
+            <td>${bLink(hx(b.number))}</td>
+            <td class="muted">${ago(hx(b.timestamp))}</td>
+            <td>${(b.transactions||[]).length}</td>
+            <td>${aLink(b.miner)}</td>
+            <td>${hx(b.gasUsed).toLocaleString('en-US')} <span class="muted small">(${(100*hx(b.gasUsed)/Math.max(1,hx(b.gasLimit))).toFixed(1)}%)</span></td>
+            <td class="muted">${hx(b.gasLimit).toLocaleString('en-US')}</td>
+            <td class="muted">${gwei(b.baseFeePerGas||'0x0')} gwei</td>
+            <td class="mono muted">${short(b.hash,8)}</td></tr>`).join('')}
+          </tbody></table></div>
+      </div>`;
+  }catch(e){ fail(e); }
+}
+
+// ---------- RECENT TXS ----------
+async function renderTxs(){
+  try{
+    $('main').innerHTML = '<div class="spin">Scanning recent blocks for transactions…</div>';
+    const latest = hx(await rpc('eth_blockNumber')); latestKnown = latest;
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    const rows = []; let scanned = 0;
+    for(let base=latest; base>latest-500 && rows.length<25 && base>=0; base-=50){
+      const nums=[]; for(let i=0;i<50 && base-i>=0;i++) nums.push(base-i);
+      const blocks = (await rpcBatch(nums.map(n=>['eth_getBlockByNumber',['0x'+n.toString(16), true]]))).filter(Boolean);
+      scanned += blocks.length;
+      for(const b of blocks){ for(const t of (b.transactions||[])){ rows.push({t, ts:hx(b.timestamp), bn:hx(b.number)}); } }
+    }
+    rows.sort((a,b)=>b.bn-a.bn);
+    $('main').innerHTML = `
+      <div class="ptitle">Transactions <span class="sub">from the latest ${scanned.toLocaleString('en-US')} blocks</span></div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Txn Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th>To</th><th>Value</th><th>Txn Fee</th></tr></thead>
+        <tbody>${rows.length?rows.slice(0,50).map(({t,ts,bn})=>`<tr>
+          <td>${txLink(t.hash)}</td>
+          <td><span class="methodpill" title="${esc(methodOf(t))}">${esc(methodOf(t))}</span></td>
+          <td>${bLink(bn)}</td>
+          <td class="muted">${ago(ts)}</td>
+          <td>${aLink(t.from)}</td><td>${aLink(t.to)}</td>
+          <td>${fmtWtx(t.value,4)} WTX</td>
+          <td class="muted small">${gwei(t.gasPrice||t.maxFeePerGas||'0x0')} gwei</td></tr>`).join('')
+          :'<tr><td colspan="8" class="muted">No transactions found in the scanned range</td></tr>'}
+        </tbody></table></div></div>
+      <div class="notice">Without a historical index, this page scans the most recent blocks live — older transactions are reachable via their hash, block, or the block list.</div>`;
+  }catch(e){ fail(e); }
+}
+
+// ---------- BLOCK ----------
+async function renderBlock(arg){
+  try{
+    $('main').innerHTML = '<div class="spin">Loading block…</div>';
+    let b;
+    if(/^0x[0-9a-fA-F]{64}$/.test(arg)) b = await rpc('eth_getBlockByHash',[arg,true]);
+    else if(/^\d+$/.test(arg)) b = await rpc('eth_getBlockByNumber',['0x'+parseInt(arg).toString(16), true]);
+    if(!b){ $('main').innerHTML = '<div class="err">Block not found.</div>'; return; }
+    const n = hx(b.number);
+    const latest = latestKnown || hx(await rpc('eth_blockNumber')); latestKnown = Math.max(latestKnown, latest);
+    const confs = Math.max(0, latest-n);
+    const gasPct = 100*hx(b.gasUsed)/Math.max(1,hx(b.gasLimit));
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    $('main').innerHTML = `
+      <div class="ptitle">Block <span class="sub">#${n.toLocaleString('en-US')}</span>
+        <span class="pager">
+          ${n>0?`<a href="#/block/${n-1}" onclick="return go('/block/${n-1}')" title="Previous block">‹</a>`:'<span class="btn">‹</span>'}
+          ${n<latest?`<a href="#/block/${n+1}" onclick="return go('/block/${n+1}')" title="Next block">›</a>`:'<span class="btn">›</span>'}
+        </span></div>
+      <div class="card"><div class="kv">
+        <div class="r"><div class="k">Block Height</div><div class="v">${n.toLocaleString('en-US')}</div></div>
+        <div class="r"><div class="k">Status</div><div class="v">${confs>=30?'<span class="badge ok">Finalized</span>':'<span class="badge pend">Unfinalized</span>'} <span class="muted small">${confs.toLocaleString('en-US')} block confirmations</span></div></div>
+        <div class="r"><div class="k">Timestamp</div><div class="v">${ago(hx(b.timestamp))} (${dt(hx(b.timestamp))})</div></div>
+        <div class="r"><div class="k">Transactions</div><div class="v">${(b.transactions||[]).length} transaction${(b.transactions||[]).length===1?'':'s'} in this block</div></div>
+        <div class="r"><div class="k">Mined by</div><div class="v mono"><a href="#/address/${b.miner}" onclick="return go('/address/${b.miner}')">${b.miner}</a> ${copyBtn(b.miner)}</div></div>
+        <div class="r"><div class="k">Difficulty</div><div class="v">${hx(b.difficulty).toLocaleString('en-US')}</div></div>
+        ${b.totalDifficulty?`<div class="r"><div class="k">Total Difficulty</div><div class="v">${BigInt(b.totalDifficulty).toLocaleString('en-US')}</div></div>`:''}
+        <div class="r"><div class="k">Gas Used</div><div class="v">${hx(b.gasUsed).toLocaleString('en-US')} <span class="muted small">(${gasPct.toFixed(2)}%)</span><span class="gasbar"><i style="width:${Math.min(100,gasPct)}%"></i></span></div></div>
+        <div class="r"><div class="k">Gas Limit</div><div class="v">${hx(b.gasLimit).toLocaleString('en-US')}</div></div>
+        <div class="r"><div class="k">Base Fee Per Gas</div><div class="v">${gwei(b.baseFeePerGas||'0x0')} gwei</div></div>
+        <div class="r"><div class="k">Size</div><div class="v">${hx(b.size).toLocaleString('en-US')} bytes</div></div>
+        <div class="r"><div class="k">Extra Data</div><div class="v mono muted small">${esc(b.extraData)}</div></div>
+        <div class="r"><div class="k">Hash</div><div class="v mono">${b.hash} ${copyBtn(b.hash)}</div></div>
+        <div class="r"><div class="k">Parent Hash</div><div class="v mono"><a href="#/block/${b.parentHash}" onclick="return go('/block/${b.parentHash}')">${b.parentHash}</a></div></div>
+        <div class="r"><div class="k">Nonce</div><div class="v mono">${b.nonce||'—'}</div></div>
+      </div></div>
+      ${(b.transactions||[]).length?`
+      <div class="ptitle" style="font-size:1rem">Transactions</div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Txn Hash</th><th>Method</th><th>From</th><th>To</th><th>Value</th><th>Gas Price</th></tr></thead>
+        <tbody>${b.transactions.map(t=>`<tr>
+          <td>${txLink(t.hash)}</td>
+          <td><span class="methodpill" title="${esc(methodOf(t))}">${esc(methodOf(t))}</span></td>
+          <td>${aLink(t.from)}</td><td>${aLink(t.to)}</td>
+          <td>${fmtWtx(t.value,4)} WTX</td>
+          <td class="muted small">${gwei(t.gasPrice||t.maxFeePerGas||'0x0')} gwei</td></tr>`).join('')}
+        </tbody></table></div></div>`:''}`;
+  }catch(e){ fail(e); }
+}
+
+// ---------- TX ----------
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const tokenCache = {};
+async function tokenMeta(addr){
+  if(tokenCache[addr]) return tokenCache[addr];
+  let sym='?', dec=18;
+  try{
+    const [s,d] = await rpcBatch([['eth_call',[{to:addr,data:'0x95d89b41'},'latest']],['eth_call',[{to:addr,data:'0x313ce567'},'latest']]]);
+    if(d) dec = hx(d);
+    if(s && s.length>=130){ const len = parseInt(s.slice(66,130),16); sym = decodeURIComponent(s.slice(130,130+len*2).replace(/(..)/g,'%$1')).replace(/[^\x20-\x7e]/g,''); }
+  }catch(_){}
+  tokenCache[addr] = {sym,dec}; return tokenCache[addr];
+}
+async function renderNFT(addr, id){
+  try{
+    if(!/^0x[0-9a-fA-F]{40}$/.test(addr)){ $('main').innerHTML='<div class="err">Invalid contract address.</div>'; return; }
+    $('main').innerHTML = '<div class="spin">Loading NFT from chain…</div>';
+    const tid = BigInt(id);
+    const word = tid.toString(16).padStart(64,'0');
+    let uri=null, is1155=false;
+    try{ uri = await rpc('eth_call',[{to:addr,data:'0xc87b56dd'+word},'latest']); }catch(_){ }
+    if(!uri || uri==='0x'){ try{ uri = await rpc('eth_call',[{to:addr,data:'0x0e89341c'+word},'latest']); is1155=true; }catch(_){ } }
+    if(!uri || uri==='0x'){ $('main').innerHTML='<div class="err">No tokenURI for that token id.</div>'; return; }
+    // decode string return
+    const b = uri.slice(2), off = parseInt(b.slice(0,64),16)*2, len = parseInt(b.slice(off,off+64),16)*2;
+    let s=''; const raw=b.slice(off+64,off+64+len);
+    for(let i=0;i<raw.length;i+=2) s += String.fromCharCode(parseInt(raw.substr(i,2),16));
+    try{ s = decodeURIComponent(escape(s)); }catch(_){ }
+    if(is1155) s = s.replace('{id}', word);
+    let meta;
+    if(s.startsWith('data:')){
+      const comma = s.indexOf(',');
+      const payload = s.slice(comma+1);
+      let txt = s.slice(0, comma).includes('base64') ? atob(payload) : payload;
+      if(!txt.trim().startsWith('{')){ try{ txt = decodeURIComponent(txt); }catch(_){ } }
+      meta = JSON.parse(txt);
+    } else {
+      const u = s.startsWith('ipfs://') ? 'https://ipfs.io/ipfs/'+s.slice(7) : s;
+      meta = await (await fetch(u)).json();
+    }
+    let owner=null;
+    try{ const o = await rpc('eth_call',[{to:addr,data:'0x6352211e'+word},'latest']); if(o&&o.length>=42) owner='0x'+o.slice(-40); }catch(_){ }
+    let img = meta.image || meta.image_url || '';
+    if(img.startsWith('ipfs://')) img = 'https://ipfs.io/ipfs/'+img.slice(7);
+    const cname = (await nameOf(addr)) || 'NFT';
+    const attrs = (meta.attributes||[]).map(a=>`<span class="badge gray" style="margin:.15rem">${esc(a.trait_type||'')}: <b>${esc(String(a.value??''))}</b></span>`).join(' ');
+    $('main').innerHTML = `
+      <div class="ptitle">${esc(meta.name||cname+' #'+id)} <span class="badge gray">${esc(cname)}</span></div>
+      <div class="card" style="display:grid;grid-template-columns:minmax(280px,480px) 1fr;gap:1.2rem;align-items:start">
+        <div>${img?`<img src="${img.replace(/"/g,'&quot;')}" style="width:100%;border-radius:10px;background:#000" alt="">`:'<div class="muted">no image</div>'}</div>
+        <div class="kv">
+          <div class="r"><div class="k">Collection</div><div class="v"><a href="#/token/${addr}" onclick="return go('/token/${addr}')">${esc(cname)}</a> <span class="mono small muted">${addr}</span></div></div>
+          <div class="r"><div class="k">Token ID</div><div class="v mono">${esc(id)}</div></div>
+          ${owner?`<div class="r"><div class="k">Owner</div><div class="v mono"><a href="#/address/${owner}" onclick="return go('/address/${owner}')">${owner}</a></div></div>`:''}
+          ${meta.description?`<div class="r"><div class="k">Description</div><div class="v">${esc(meta.description).slice(0,800)}</div></div>`:''}
+          ${attrs?`<div class="r"><div class="k">Attributes</div><div class="v">${attrs}</div></div>`:''}
+          <div class="r"><div class="k">Metadata</div><div class="v"><span class="badge ok">fully on-chain</span></div></div>
+        </div>
+      </div>`;
+  }catch(e){ fail(e); }
+}
+
+async function renderTx(hash){
+  try{
+    if(!/^0x[0-9a-fA-F]{64}$/.test(hash)){ $('main').innerHTML='<div class="err">Invalid transaction hash.</div>'; return; }
+    $('main').innerHTML = '<div class="spin">Loading transaction…</div>';
+    const [t, r, latestHex] = await rpcBatch([['eth_getTransactionByHash',[hash]],['eth_getTransactionReceipt',[hash]],['eth_blockNumber',[]]]);
+    if(!t){ $('main').innerHTML = '<div class="err">Transaction not found.</div>'; return; }
+    const latest = hx(latestHex); latestKnown = latest;
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    let ts = null;
+    if(t.blockNumber){ const b = await rpc('eth_getBlockByNumber',[t.blockNumber,false]); if(b) ts = hx(b.timestamp); }
+    const confs = t.blockNumber ? Math.max(0, latest-hx(t.blockNumber)) : 0;
+    const status = r ? (hx(r.status)===1
+      ?'<span class="badge ok">&#10003; Success</span>'
+      :'<span class="badge fail">&#10005; Failed</span>')
+      :'<span class="badge pend">Pending</span>';
+    const fee = r ? fmtWtx('0x'+(big(r.gasUsed)*big(r.effectiveGasPrice||t.gasPrice||'0x0')).toString(16), 8) : '—';
+    const gasPct = r ? 100*hx(r.gasUsed)/Math.max(1,hx(t.gas)) : 0;
+    // ERC-20 transfers
+    let transfersHtml = '';
+    const logs = (r&&r.logs)||[];
+    const xfers = logs.filter(l=>l.topics && l.topics[0]===TRANSFER_TOPIC && l.topics.length===3);
+    if(xfers.length){
+      const rows = [];
+      for(const l of xfers.slice(0,20)){
+        const m = await tokenMeta(l.address);
+        rows.push(`<div class="lrow" style="padding:.45rem 0">
+          <span class="muted small">From</span> ${aLink('0x'+l.topics[1].slice(26))}
+          <span class="muted small">To</span> ${aLink('0x'+l.topics[2].slice(26))}
+          <span class="muted small">For</span> <b>${fmtUnits(l.data==='0x'?'0x0':l.data, m.dec)}</b>
+          <a href="#/token/${l.address}" onclick="return go('/token/${l.address}')">${esc(m.sym)}</a></div>`);
+      }
+      transfersHtml = `<div class="r"><div class="k">ERC-20 Tokens Transferred <span class="badge gray">${xfers.length}</span></div><div class="v">${rows.join('')}</div></div>`;
+    }
+    $('main').innerHTML = `
+      <div class="ptitle">Transaction Details</div>
+      <div class="card"><div class="kv">
+        <div class="r"><div class="k">Transaction Hash</div><div class="v mono">${t.hash} ${copyBtn(t.hash)}</div></div>
+        <div class="r"><div class="k">Status</div><div class="v">${status}</div></div>
+        <div class="r"><div class="k">Block</div><div class="v">${t.blockNumber?bLink(hx(t.blockNumber)):'<span class="muted">pending</span>'} <span class="badge gray">${confs.toLocaleString('en-US')} block confirmations</span></div></div>
+        ${ts?`<div class="r"><div class="k">Timestamp</div><div class="v">${ago(ts)} (${dt(ts)})</div></div>`:''}
+        <div class="r"><div class="k">From</div><div class="v mono"><a href="#/address/${t.from}" onclick="return go('/address/${t.from}')">${t.from}</a> ${copyBtn(t.from)}</div></div>
+        <div class="r"><div class="k">To</div><div class="v mono">${t.to
+          ?`<a href="#/address/${t.to}" onclick="return go('/address/${t.to}')">${t.to}</a> ${copyBtn(t.to)}`
+          :(r&&r.contractAddress?`<span class="badge gray">Contract Created</span> <a href="#/address/${r.contractAddress}" onclick="return go('/address/${r.contractAddress}')">${r.contractAddress}</a>`:'Contract Creation')}</div></div>
+        ${transfersHtml}
+        <div class="r"><div class="k">Value</div><div class="v"><b>${fmtWtx(t.value,8)} WTX</b></div></div>
+        <div class="r"><div class="k">Transaction Fee</div><div class="v">${fee} WTX</div></div>
+        <div class="r"><div class="k">Gas Price</div><div class="v">${gwei(r&&r.effectiveGasPrice||t.gasPrice||'0x0')} gwei</div></div>
+        <div class="r"><div class="k">Gas Limit &amp; Usage</div><div class="v">${hx(t.gas).toLocaleString('en-US')} | ${r?hx(r.gasUsed).toLocaleString('en-US'):'—'} <span class="muted small">(${gasPct.toFixed(2)}%)</span><span class="gasbar"><i style="width:${Math.min(100,gasPct)}%"></i></span></div></div>
+        <div class="r"><div class="k">Other Attributes</div><div class="v"><span class="badge gray">Nonce: ${hx(t.nonce)}</span> <span class="badge gray">Position: ${hx(t.transactionIndex)}</span> ${t.type?`<span class="badge gray">Type: ${hx(t.type)}</span>`:''}</div></div>
+        <div class="r"><div class="k">Input Data</div><div class="v"><div class="databox mono small">${t.input==='0x'?'0x <span class="muted">(plain WTX transfer)</span>':esc(t.input.length>6000?t.input.slice(0,6000)+'…':t.input)}</div></div></div>
+      </div></div>
+      ${logs.length?`
+      <div class="ptitle" style="font-size:1rem">Transaction Receipt Event Logs <span class="badge gray">${logs.length}</span></div>
+      ${logs.slice(0,25).map(l=>`<div class="logbox mono">
+        <span class="badge gray">${hx(l.logIndex)}</span> <a href="#/address/${l.address}" onclick="return go('/address/${l.address}')">${l.address}</a><br>
+        ${l.topics.map((tp,i)=>`<span class="muted">[topic${i}]</span> ${tp}`).join('<br>')}
+        ${l.data && l.data!=='0x'?`<br><span class="muted">[data]</span> ${l.data.length>320?l.data.slice(0,320)+'…':l.data}`:''}</div>`).join('')}`:''}`;
+  }catch(e){ fail(e); }
+}
+
+// ---------- TOKENS DIRECTORY ----------
+const TS_TOPIC = '0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'; // ERC1155 TransferSingle
+const TB_TOPIC = '0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'; // ERC1155 TransferBatch
+async function erc165(addr, iface){
+  try{ const r = await rpc('eth_call',[{to:addr,data:'0x01ffc9a7'+iface.slice(2)+'0'.repeat(56)},'latest']);
+    return r && r.endsWith('1'); }catch(_){ return false; }
+}
+async function nameOf(addr){
+  try{ const s = await rpc('eth_call',[{to:addr,data:'0x06fdde03'},'latest']);
+    if(s && s.length>=130){ const len=parseInt(s.slice(66,130),16);
+      return decodeURIComponent(s.slice(130,130+len*2).replace(/(..)/g,'%$1')).replace(/[^\x20-\x7e]/g,''); }
+  }catch(_){}
+  return null;
+}
+async function renderTokens(){
+  try{
+    $('main').innerHTML = '<div class="spin">Loading token directory…</div>';
+    const latest = hx(await rpc('eth_blockNumber')); latestKnown = latest;
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    const tokens = Object.entries(KNOWN).filter(([,k])=>k.cat==='token');
+    const nfts = Object.entries(KNOWN).filter(([,k])=>k.cat==='nft');
+    const contracts = Object.entries(KNOWN).filter(([,k])=>k.cat==='contract');
+    // live meta for tokens: symbol, decimals, totalSupply
+    const calls = tokens.flatMap(([a])=>[
+      ['eth_call',[{to:a,data:'0x95d89b41'},'latest']],
+      ['eth_call',[{to:a,data:'0x313ce567'},'latest']],
+      ['eth_call',[{to:a,data:'0x18160ddd'},'latest']]]);
+    const res = await rpcBatch(calls);
+    const decStr = s=>{ if(!s||s.length<130) return null; const len=parseInt(s.slice(66,130),16);
+      return decodeURIComponent(s.slice(130,130+len*2).replace(/(..)/g,'%$1')).replace(/[^\x20-\x7e]/g,''); };
+    const rows = tokens.map(([a,k],i)=>{
+      const sym = decStr(res[i*3]) || '—';
+      const dec = res[i*3+1]!=null ? hx(res[i*3+1]) : 18;
+      const sup = res[i*3+2];
+      return `<tr><td><a href="#/token/${a}" onclick="return go('/token/${a}')">${esc(k.name)}</a></td>
+        <td>${esc(sym)}</td><td class="muted">${dec}</td>
+        <td>${sup?fmtUnits(sup,dec,2):'—'}</td>
+        <td class="mono small"><a class="mono" href="#/token/${a}" onclick="return go('/token/${a}')">${a}</a></td></tr>`;
+    }).join('');
+    // recently active tokens (discovered from Transfer logs)
+    let discovered = '';
+    try{
+      const from = '0x'+Math.max(0,latest-20000).toString(16);
+      const logs = await rpc('eth_getLogs',[{fromBlock:from,toBlock:'latest',topics:[[TRANSFER_TOPIC,TS_TOPIC,TB_TOPIC]]}]);
+      const counts = {};
+      for(const l of logs){ counts[l.address.toLowerCase()]=(counts[l.address.toLowerCase()]||0)+1; }
+      const fresh = Object.entries(counts).filter(([a])=>!KNOWN[a]).sort((x,y)=>y[1]-x[1]).slice(0,10);
+      if(fresh.length){
+        const frows = [];
+        for(const [a,c] of fresh){
+          const m = await tokenMeta(a);
+          frows.push(`<tr><td><a href="#/token/${a}" onclick="return go('/token/${a}')">${esc(m.sym!=='?'?m.sym:short(a))}</a></td>
+            <td>${c.toLocaleString('en-US')}</td>
+            <td class="mono small"><a class="mono" href="#/token/${a}" onclick="return go('/token/${a}')">${a}</a></td></tr>`);
+        }
+        discovered = `<div class="ptitle" style="font-size:1rem">Recently Active (last 20,000 blocks)</div>
+        <div class="card"><div class="tscroll"><table>
+          <thead><tr><th>Token</th><th>Transfer Events</th><th>Contract</th></tr></thead>
+          <tbody>${frows.join('')}</tbody></table></div></div>`;
+      }
+    }catch(_){}
+    $('main').innerHTML = `
+      <div class="ptitle">Tokens <span class="sub">on WATTx</span></div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Name</th><th>Symbol</th><th>Decimals</th><th>Total Supply</th><th>Contract</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>
+      ${discovered}
+      <div class="ptitle" style="font-size:1rem">NFT Collections</div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Name</th><th>Contract</th></tr></thead>
+        <tbody>${nfts.map(([a,k])=>`<tr><td><a href="#/token/${a}" onclick="return go('/token/${a}')">${esc(k.name)}</a></td>
+          <td class="mono small"><a class="mono" href="#/token/${a}" onclick="return go('/token/${a}')">${a}</a></td></tr>`).join('')}</tbody></table></div></div>
+      <div class="ptitle" style="font-size:1rem">Known Contracts</div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Name</th><th>Address</th></tr></thead>
+        <tbody>${contracts.map(([a,k])=>`<tr><td><a href="#/address/${a}" onclick="return go('/address/${a}')">${esc(k.name)}</a></td>
+          <td class="mono small"><a class="mono" href="#/address/${a}" onclick="return go('/address/${a}')">${a}</a></td></tr>`).join('')}</tbody></table></div></div>`;
+  }catch(e){ fail(e); }
+}
+
+// ---------- TOKEN DETAIL ----------
+async function tokenLogs(addr, latest){
+  // try full history first (node keeps it); fall back to recent windows
+  for(const from of ['0x0','0x'+Math.max(0,latest-100000).toString(16),'0x'+Math.max(0,latest-10000).toString(16)]){
+    try{
+      const logs = await rpc('eth_getLogs',[{fromBlock:from,toBlock:'latest',address:addr,topics:[[TRANSFER_TOPIC,TS_TOPIC,TB_TOPIC]]}]);
+      return {logs, full: from==='0x0'};
+    }catch(_){}
+  }
+  return {logs:[], full:false};
+}
+async function renderToken(addr){
+  try{
+    if(!/^0x[0-9a-fA-F]{40}$/.test(addr)){ $('main').innerHTML='<div class="err">Invalid token address.</div>'; return; }
+    $('main').innerHTML = '<div class="spin">Loading token…</div>';
+    const [code, latestHex] = await rpcBatch([['eth_getCode',[addr,'latest']],['eth_blockNumber',[]]]);
+    const latest = hx(latestHex); latestKnown = latest;
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    if(!code || code==='0x'){ $('main').innerHTML = '<div class="err">No contract at this address.</div>'; return; }
+    const k = knownOf(addr);
+    const [is1155, is721] = await Promise.all([erc165(addr,'0xd9b67a26'), erc165(addr,'0x80ac58cd')]);
+    const m = await tokenMeta(addr);
+    const nm = await nameOf(addr);
+    let supply = null;
+    try{ supply = await rpc('eth_call',[{to:addr,data:'0x18160ddd'},'latest']); }catch(_){}
+    const typeBadge = is1155?'<span class="badge gray">ERC-1155</span>':is721?'<span class="badge gray">ERC-721</span>':'<span class="badge gray">ERC-20</span>';
+    // transfers
+    const {logs, full} = await tokenLogs(addr, latest);
+    const shown = logs.slice(-25).reverse();
+    const blockNums = [...new Set(shown.map(l=>l.blockNumber))];
+    const blocks = await rpcBatch(blockNums.map(bn=>['eth_getBlockByNumber',[bn,false]]));
+    const tsMap = {}; blockNums.forEach((bn,i)=>{ if(blocks[i]) tsMap[bn]=hx(blocks[i].timestamp); });
+    const xrows = shown.map(l=>{
+      let from='',to='',amt='';
+      if(l.topics[0]===TRANSFER_TOPIC && l.topics.length===3){
+        from='0x'+l.topics[1].slice(26); to='0x'+l.topics[2].slice(26);
+        amt = fmtUnits(l.data==='0x'?'0x0':l.data, m.dec)+(m.sym!=='?'?' '+esc(m.sym):'');
+      } else if(l.topics[0]===TRANSFER_TOPIC && l.topics.length===4){
+        from='0x'+l.topics[1].slice(26); to='0x'+l.topics[2].slice(26);
+        { const nid = hx(l.topics[3]); amt = `<a href="#/nft/${addr}/${nid}" onclick="return go('/nft/${addr}/${nid}')">NFT #${nid}</a>`; }
+      } else if(l.topics[0]===TS_TOPIC){
+        from='0x'+l.topics[2].slice(26); to='0x'+l.topics[3].slice(26);
+        const id = BigInt('0x'+l.data.slice(2,66)).toString(); const v = BigInt('0x'+l.data.slice(66,130)).toString();
+        amt = v+' × id '+id;
+      } else if(l.topics[0]===TB_TOPIC){
+        from='0x'+l.topics[2].slice(26); to='0x'+l.topics[3].slice(26); amt='batch';
+      } else return '';
+      return `<tr><td>${txLink(l.transactionHash)}</td>
+        <td>${bLink(hx(l.blockNumber))}</td>
+        <td class="muted">${tsMap[l.blockNumber]?ago(tsMap[l.blockNumber]):'—'}</td>
+        <td>${aLink(from)}</td><td>${aLink(to)}</td><td>${amt}</td></tr>`;
+    }).join('');
+    $('main').innerHTML = `
+      <div class="ptitle">Token <span class="sub">${esc(nm||m.sym!=='?'&&m.sym||k&&k.name||short(addr))}</span> ${typeBadge}</div>
+      <div class="twocol" style="margin-top:0">
+        <div class="card">
+          <div class="cardhead">Overview</div>
+          <div class="kv">
+            ${nm?`<div class="r"><div class="k">Name</div><div class="v">${esc(nm)}</div></div>`:''}
+            ${m.sym!=='?'?`<div class="r"><div class="k">Symbol</div><div class="v">${esc(m.sym)}</div></div>`:''}
+            ${!is1155&&!is721?`<div class="r"><div class="k">Decimals</div><div class="v">${m.dec}</div></div>`:''}
+            ${supply&&!is1155?`<div class="r"><div class="k">Total Supply</div><div class="v">${is721?BigInt(supply).toLocaleString('en-US'):fmtUnits(supply,m.dec,4)}${m.sym!=='?'&&!is721?' '+esc(m.sym):''}</div></div>`:''}
+            <div class="r"><div class="k">Transfers</div><div class="v">${logs.length.toLocaleString('en-US')}${full?' <span class="muted small">(all time)</span>':' <span class="muted small">(recent window)</span>'}</div></div>
+            ${(is721||is1155)?`<div class="r"><div class="k">NFT Viewer</div><div class="v"><input id="nftid" type="number" min="1" value="1" style="width:90px;background:var(--bg2,#0c1020);color:inherit;border:1px solid #2c375c;border-radius:6px;padding:.3rem .5rem"> <button class="badge gray" style="cursor:pointer;border:1px solid #2c375c;background:none" onclick="go('/nft/${addr}/'+document.getElementById('nftid').value)">View art</button></div></div>`:''}
+          </div>
+        </div>
+        <div class="card">
+          <div class="cardhead">Profile</div>
+          <div class="kv">
+            <div class="r"><div class="k">Contract</div><div class="v mono"><a href="#/address/${addr}" onclick="return go('/address/${addr}')">${addr}</a> ${copyBtn(addr)}</div></div>
+            ${k?`<div class="r"><div class="k">Name Tag</div><div class="v"><span class="badge gray">${esc(k.name)}</span></div></div>`:''}
+            <div class="r"><div class="k">Bytecode</div><div class="v">${((code.length-2)/2).toLocaleString('en-US')} bytes</div></div>
+            <div class="r"><div class="k">Check Balance</div><div class="v">
+              <input id="balq" class="mono" placeholder="0x address" style="width:60%;padding:.35rem .5rem;border:1px solid var(--line);border-radius:.35rem;font-size:.78rem">
+              ${is1155?'<input id="balid" placeholder="id" style="width:3.5rem;padding:.35rem .5rem;border:1px solid var(--line);border-radius:.35rem;font-size:.78rem;margin-left:.3rem">':''}
+              <button class="pager" style="border:0;cursor:pointer;margin-left:.3rem" onclick="checkBal('${addr}',${is1155},${m.dec},'${esc(m.sym)}')"><span class="btn" style="opacity:1">Check</span></button>
+              <div id="balout" class="small" style="margin-top:.3rem"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="ptitle" style="font-size:1rem">Transfers <span class="badge gray">latest ${shown.length} of ${logs.length.toLocaleString('en-US')}</span></div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Txn Hash</th><th>Block</th><th>Age</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+        <tbody>${xrows||'<tr><td colspan="6" class="muted">No transfer events found</td></tr>'}</tbody></table></div></div>`;
+  }catch(e){ fail(e); }
+}
+async function checkBal(token, is1155, dec, sym){
+  const a = ($('balq').value||'').trim();
+  const out = $('balout');
+  if(!/^0x[0-9a-fA-F]{40}$/.test(a)){ out.textContent = 'Enter a valid 0x address'; return; }
+  out.textContent = '…';
+  try{
+    let data;
+    if(is1155){
+      const id = BigInt(($('balid').value||'0').trim()||'0');
+      data = '0x00fdd58e'+'0'.repeat(24)+a.slice(2)+id.toString(16).padStart(64,'0');
+    } else data = '0x70a08231'+'0'.repeat(24)+a.slice(2);
+    const r = await rpc('eth_call',[{to:token,data},'latest']);
+    out.innerHTML = '<b>'+(is1155?BigInt(r||'0x0').toLocaleString('en-US'):fmtUnits(r||'0x0',dec,6))+'</b> '+(is1155?'(id '+($('balid').value||'0')+')':esc(sym!=='?'?sym:''));
+  }catch(e){ out.textContent = 'Error: '+(e.message||e); }
+}
+
+// ---------- ADDRESS ----------
+async function renderAddress(addr){
+  try{
+    if(!/^0x[0-9a-fA-F]{40}$/.test(addr)){ $('main').innerHTML='<div class="err">Invalid address.</div>'; return; }
+    $('main').innerHTML = '<div class="spin">Loading address…</div>';
+    const [bal, nonce, code, latestHex] = await rpcBatch([
+      ['eth_getBalance',[addr,'latest']],
+      ['eth_getTransactionCount',[addr,'latest']],
+      ['eth_getCode',[addr,'latest']],
+      ['eth_blockNumber',[]]]);
+    const latest = hx(latestHex); latestKnown = latest;
+    setStatus(true, 'WATTx · #'+latest.toLocaleString('en-US'));
+    const isContract = code && code!=='0x';
+    const k = knownOf(addr);
+    let tokenRows = '';
+    if(isContract){
+      const m = await tokenMeta(addr);
+      if(m.sym && m.sym!=='?'){
+        let supply = null;
+        try{ supply = await rpc('eth_call',[{to:addr,data:'0x18160ddd'},'latest']); }catch(_){}
+        tokenRows = `<div class="r"><div class="k">Token</div><div class="v"><a href="#/token/${addr}" onclick="return go('/token/${addr}')"><span class="badge gray">${esc(m.sym)}</span></a> <span class="muted small">decimals ${m.dec}</span> <a href="#/token/${addr}" onclick="return go('/token/${addr}')" class="small">view token page →</a></div></div>
+        ${supply?`<div class="r"><div class="k">Total Supply</div><div class="v">${fmtUnits(supply,m.dec,4)} ${esc(m.sym)}</div></div>`:''}`;
+      } else if(k&&(k.cat==='nft')){
+        tokenRows = `<div class="r"><div class="k">Collection</div><div class="v"><a href="#/token/${addr}" onclick="return go('/token/${addr}')" class="small">view token page →</a></div></div>`;
+      }
+    }
+    $('main').innerHTML = `
+      <div class="ptitle">${isContract?'Contract':'Address'} <span class="sub mono">${addr}</span> ${copyBtn(addr)} ${k?`<span class="badge gray">${esc(k.name)}</span>`:''}</div>
+      <div class="twocol" style="margin-top:0">
+        <div class="card">
+          <div class="cardhead">Overview</div>
+          <div class="kv">
+            <div class="r"><div class="k">WTX Balance</div><div class="v"><b>${fmtWtx(bal,8)} WTX</b></div></div>
+            <div class="r"><div class="k">Type</div><div class="v">${isContract?'<span class="badge gray">Contract</span>':'<span class="badge gray">Externally Owned Account</span>'}</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="cardhead">More Info</div>
+          <div class="kv">
+            <div class="r"><div class="k">Nonce</div><div class="v">${hx(nonce).toLocaleString('en-US')} <span class="muted small">outgoing transactions</span></div></div>
+            ${tokenRows}
+            ${isContract?`<div class="r"><div class="k">Bytecode Size</div><div class="v">${((code.length-2)/2).toLocaleString('en-US')} bytes</div></div>`:''}
+          </div>
+        </div>
+      </div>
+      <div id="addrxfers"><div class="spin">Loading token transfers…</div></div>
+      <div class="notice">WTXScan has no full transaction index — native WTX transfer history isn't listed, but token transfers above are read live from event logs. Look up a specific transaction hash or browse <a href="#/blocks" onclick="return go('/blocks')">blocks</a> to drill in.</div>`;
+    renderAddrTransfers(addr, latest);
+  }catch(e){ fail(e); }
+}
+async function renderAddrTransfers(addr, latest){
+  const box = $('addrxfers'); if(!box) return;
+  try{
+    const pad = '0x'+'0'.repeat(24)+addr.slice(2).toLowerCase();
+    let logs = null, full = false;
+    for(const from of ['0x0','0x'+Math.max(0,latest-100000).toString(16)]){
+      try{
+        const [asFrom, asTo] = await Promise.all([
+          rpc('eth_getLogs',[{fromBlock:from,toBlock:'latest',topics:[TRANSFER_TOPIC,pad]}]),
+          rpc('eth_getLogs',[{fromBlock:from,toBlock:'latest',topics:[TRANSFER_TOPIC,null,pad]}])]);
+        const seen = new Set();
+        logs = [...asFrom,...asTo].filter(l=>{ const key=l.transactionHash+':'+l.logIndex; if(seen.has(key))return false; seen.add(key); return true; })
+          .sort((a,b)=>hx(a.blockNumber)-hx(b.blockNumber));
+        full = from==='0x0';
+        break;
+      }catch(_){}
+    }
+    if(!logs){ box.innerHTML=''; return; }
+    if(!logs.length){ box.innerHTML = `<div class="notice">No ERC-20 token transfers found for this address${full?' (full history)':''}.</div>`; return; }
+    const shown = logs.slice(-25).reverse();
+    const blockNums = [...new Set(shown.map(l=>l.blockNumber))];
+    const blocks = await rpcBatch(blockNums.map(bn=>['eth_getBlockByNumber',[bn,false]]));
+    const tsMap = {}; blockNums.forEach((bn,i)=>{ if(blocks[i]) tsMap[bn]=hx(blocks[i].timestamp); });
+    const rows = [];
+    for(const l of shown){
+      if(l.topics.length===4){ // ERC-721
+        rows.push(`<tr><td>${txLink(l.transactionHash)}</td><td>${bLink(hx(l.blockNumber))}</td>
+          <td class="muted">${tsMap[l.blockNumber]?ago(tsMap[l.blockNumber]):'—'}</td>
+          <td>${aLink('0x'+l.topics[1].slice(26))}</td><td>${aLink('0x'+l.topics[2].slice(26))}</td>
+          <td>NFT #${hx(l.topics[3])} <a href="#/token/${l.address}" onclick="return go('/token/${l.address}')">${esc((knownOf(l.address)||{}).name||short(l.address,4))}</a></td></tr>`);
+      } else {
+        const m = await tokenMeta(l.address);
+        rows.push(`<tr><td>${txLink(l.transactionHash)}</td><td>${bLink(hx(l.blockNumber))}</td>
+          <td class="muted">${tsMap[l.blockNumber]?ago(tsMap[l.blockNumber]):'—'}</td>
+          <td>${aLink('0x'+l.topics[1].slice(26))}</td><td>${aLink('0x'+l.topics[2].slice(26))}</td>
+          <td>${fmtUnits(l.data==='0x'?'0x0':l.data, m.dec)} <a href="#/token/${l.address}" onclick="return go('/token/${l.address}')">${esc(m.sym!=='?'?m.sym:short(l.address,4))}</a></td></tr>`);
+      }
+    }
+    box.innerHTML = `
+      <div class="ptitle" style="font-size:1rem">Token Transfers <span class="badge gray">latest ${shown.length} of ${logs.length.toLocaleString('en-US')}${full?' · all time':' · recent window'}</span></div>
+      <div class="card"><div class="tscroll"><table>
+        <thead><tr><th>Txn Hash</th><th>Block</th><th>Age</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+        <tbody>${rows.join('')}</tbody></table></div></div>`;
+  }catch(e){ box.innerHTML=''; }
+}
+
+route();
+</script>
+</body>
+</html>
