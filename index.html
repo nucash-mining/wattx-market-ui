@@ -349,8 +349,8 @@ const CHAINS = {
   wattx:    { name:'WATTx', sub:'Ordinals + NFTs', type:'evm', status:'live', color:'#ffd400',
               chainId:'0x5754', symbol:'WTX', decimals:18, rpc:'https://rpc-wtx.wattxchange.app',
               explorer:'https://wtx-explorer.wattxchange.app' },
-  alt:      { name:'Altcoinchain', sub:'Binary Maker · 100K Club', type:'evm', status:'soon', color:'#9b4dff', chainId:'0x91a', symbol:'ALT',
-              note:'Minting on Altcoinchain is LIVE in Binary Maker and the 100K WATT Club — marketplace trading here is coming soon.' },
+  alt:      { name:'Altcoinchain', sub:'Binary Maker · 100K Club', type:'evm', status:'live', color:'#9b4dff', chainId:'0x91a', symbol:'ALT', browse:true,
+              rpc:'https://rpc.wattxchange.app', explorer:'https://alt-exp.wattxchange.app' },
   ethereum: { name:'Ethereum', sub:'EVM', type:'evm', status:'soon', color:'#627eea', chainId:'0x1', symbol:'ETH' },
   bsc:      { name:'BNB Chain', sub:'EVM', type:'evm', status:'soon', color:'#f0b90b', chainId:'0x38', symbol:'BNB' },
   polygon:  { name:'Polygon', sub:'EVM', type:'evm', status:'soon', color:'#8247e5', chainId:'0x89', symbol:'POL' },
@@ -430,6 +430,7 @@ function setActiveNet(k){
 async function selectChain(k){
   $('netmenu').classList.remove('open');
   const c=CHAINS[k];
+  if(c.browse){ setActiveNet(k); renderAltGallery(); return; }
   if(c.status==='soon'){
     setActiveNet(k);
     const how = c.note ? c.note : (c.type==='utxo'
@@ -515,7 +516,7 @@ function emptyHTML(h,sub,showList){
 }
 
 function render(){
-  if(view==='ordinals') return; // load() finishing late must not stomp the ordinals grid
+  if(view==='ordinals'||view==='altchain') return; // late load() must not stomp these grids
   let list=items.slice();
   const q=$('search').value.trim().toLowerCase();
   if(q) list=list.filter(i=>i.collection.toLowerCase().includes(q)||i.tokenId.includes(q)||i.name.toLowerCase().includes(q)||i.collName.toLowerCase().includes(q));
@@ -812,6 +813,61 @@ window.ethereum&&window.ethereum.on&&window.ethereum.on('accountsChanged',()=>lo
 
 // try a read on load (works if opened over http / with wallet); otherwise prompt connect
 load();
+
+// ---- Altcoinchain read-only gallery (Binary Maker + 100K Club) ----
+const ALT_COLLS = [
+  { name:'Binary Maker', addr:'0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107' },
+  { name:'100K WATT Club', addr:'0x80A0C4E85C95814287649F7Df558697ae411f2B8' },
+];
+function parseDataJson(uri){
+  if(!uri.startsWith('data:')) return null;
+  const comma=uri.indexOf(','); const payload=uri.slice(comma+1);
+  let txt = uri.slice(0,comma).includes('base64') ? atob(payload) : payload;
+  if(!txt.trim().startsWith('{')){ try{ txt=decodeURIComponent(txt); }catch(e){} }
+  return JSON.parse(txt);
+}
+async function renderAltGallery(){
+  view='altchain';
+  document.querySelectorAll('.hnav a').forEach(x=>x.classList.remove('on'));
+  $('inscribeBtn').style.display='none'; $('createBtn').style.display='none'; $('listBtn').style.display='none';
+  const g=$('grid');
+  g.innerHTML='<div class="empty"><div class="ic">01</div><h3>Loading Altcoinchain…</h3></div>';
+  try{
+    const p=new ethers.JsonRpcProvider(CHAINS.alt.rpc, 2330, {staticNetwork:true});
+    const cards=[];
+    for(const c of ALT_COLLS){
+      let total=0;
+      try{ total=Number(await p.call({to:c.addr,data:'0xa2309ff8'})); }catch(e){}
+      const ids=[]; for(let i=1;i<=Math.min(total,24);i++) ids.push(i);
+      for(const id of ids){
+        try{
+          const word=BigInt(id).toString(16).padStart(64,'0');
+          const r=await p.call({to:c.addr,data:'0xc87b56dd'+word});
+          const [uri]=ethers.AbiCoder.defaultAbiCoder().decode(['string'],r);
+          const meta=parseDataJson(uri) || await (await fetch(ipfs(uri))).json();
+          let ow=''; try{ const o=await p.call({to:c.addr,data:'0x6352211e'+word}); ow='0x'+o.slice(-40);}catch(e){}
+          cards.push({coll:c.name, addr:c.addr, id, name:meta.name||c.name+' #'+id, img:meta.image||'', owner:ow});
+        }catch(e){}
+      }
+    }
+    $('sListed').textContent=cards.length; $('sColls').textContent=ALT_COLLS.length; $('sFloor').textContent='—';
+    if(!cards.length){ g.innerHTML='<div class="empty"><div class="ic">01</div><h3>Nothing minted on Altcoinchain yet</h3><p>Mint the first piece in Binary Maker.</p><button onclick="location.href=\'binary-maker.html\'">⚡ Open Binary Maker</button></div>'; return; }
+    g.innerHTML=cards.map(c=>`
+      <div class="nft" onclick="window.open('${CHAINS.alt.explorer}/nft/${c.addr}/${c.id}','_blank')">
+        <div class="art">${c.img?`<img src="${c.img.replace(/"/g,'&quot;')}" loading="lazy"/>`:'<div class="ph">01</div>'}
+          <div class="badge" style="color:#9b4dff">Altcoinchain</div></div>
+        <div class="body">
+          <div class="coll">${c.coll}</div>
+          <div class="name">${c.name}</div>
+          <div class="foot">
+            <div class="price"><div class="lbl">Owner</div><span class="p" style="font-size:.75rem">${short(c.owner)}</span></div>
+            <button class="qbuy" onclick="event.stopPropagation();window.open('${CHAINS.alt.explorer}/nft/${c.addr}/${c.id}','_blank')">View</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }catch(e){ g.innerHTML='<div class="empty"><div class="ic">01</div><h3>Could not reach Altcoinchain</h3><p>'+(e.message||e)+'</p></div>'; }
+}
+if(new URLSearchParams(location.search).get('chain')==='alt') selectChain('alt');
 </script>
 </body>
 </html>
