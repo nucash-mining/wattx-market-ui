@@ -124,7 +124,29 @@ const G1 = "M2 3h4v1h-4zM4 4h2v1h-2zM4 5h2v1h-2zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1
 const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]; // 4x4 ordered dither
 
 let srcImg = null, outSVG = null, outCells = null, outCols = 0, outRows = 0, wallet = null;
-const BINARY_ART = { chainId: '0x91a', addr: '0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107', rpc: 'https://rpc.wattxchange.app', explorer: 'https://alt-exp.wattxchange.app' };
+// BinaryArt deployments — the mint button follows the connected chain
+const MINT_CHAINS = {
+  '0x91a': { name: 'Altcoinchain', addr: '0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107',
+    add: { chainId: '0x91a', chainName: 'Altcoinchain', nativeCurrency: { name: 'Altcoin', symbol: 'ALT', decimals: 18 },
+           rpcUrls: ['https://rpc.wattxchange.app'], blockExplorerUrls: ['https://alt-exp.wattxchange.app'] } },
+  '0x89':  { name: 'Polygon', addr: '', // deploys on the next gas dip
+    add: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+           rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] } },
+};
+const FALLBACK_MINT = '0x91a';
+let walletChain = null;
+function mintTarget() {
+  const c = MINT_CHAINS[walletChain];
+  return (c && c.addr) ? { id: walletChain, ...c, switchNeeded: false } : { id: FALLBACK_MINT, ...MINT_CHAINS[FALLBACK_MINT], switchNeeded: walletChain !== FALLBACK_MINT };
+}
+function updateMintBtn() {
+  const tgt = mintTarget();
+  $('mint').textContent = 'Mint on ' + tgt.name + (tgt.switchNeeded && walletChain ? ' (switches wallet)' : '');
+}
+if (window.ethereum) {
+  window.ethereum.request({ method: 'eth_chainId' }).then(c => { walletChain = c; updateMintBtn(); }).catch(()=>{});
+  window.ethereum.on?.('chainChanged', c => { walletChain = c; updateMintBtn(); });
+}
 
 // known collections per chain — your tokens are listed automatically
 const COLLECTIONS = {
@@ -357,18 +379,19 @@ $('mint').onclick = async () => {
     if (!outCells) { status('make it binary first', 1); return; }
     if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
     const name = ($('pname').value || '').replace(/["\\\x00-\x1f]/g, '').slice(0, 64);
-    status('switching wallet to Altcoinchain…');
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BINARY_ART.chainId }] });
-    } catch (e) {
-      await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
-        chainId: BINARY_ART.chainId, chainName: 'Altcoinchain',
-        nativeCurrency: { name: 'Altcoin', symbol: 'ALT', decimals: 18 },
-        rpcUrls: [BINARY_ART.rpc], blockExplorerUrls: [BINARY_ART.explorer] }] });
+    const tgt = mintTarget();
+    if (walletChain !== tgt.id) {
+      status('switching wallet to ' + tgt.name + '…');
+      try {
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: tgt.id }] });
+      } catch (e) {
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [tgt.add] });
+      }
+      walletChain = tgt.id; updateMintBtn();
     }
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const art = new ethers.Contract(BINARY_ART.addr,
+    const art = new ethers.Contract(tgt.addr,
       ['function mint(uint16 cols, uint16 rows, string name_, bytes cells) returns (uint256)',
        'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'], signer);
     status('confirm the mint in your wallet…');
@@ -377,7 +400,7 @@ $('mint').onclick = async () => {
     const rcpt = await tx.wait();
     let tokenId = '?';
     for (const lg of rcpt.logs) { try { const p = art.interface.parseLog(lg); if (p?.name === 'Transfer') tokenId = p.args.tokenId.toString(); } catch(e){} }
-    status(`✓ minted Binary #${tokenId} on Altcoinchain — fully on-chain, forever`);
+    status(`✓ minted Binary #${tokenId} on ${tgt.name} — fully on-chain, forever`);
   } catch (e) { status('mint failed: ' + (e.shortMessage || e.message).slice(0, 90), 1); }
 };
 </script>
