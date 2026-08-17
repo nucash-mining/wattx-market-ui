@@ -270,8 +270,9 @@ async function loadToken(rpc, addr, tid, is1155, displayOnly) {
     uri = uri.replace('{id}', tid.toString(16).padStart(64,'0'));
     let meta;
     if (uri.startsWith('data:')) {
-      const payload = uri.slice(uri.indexOf(',') + 1);
-      let txt = uri.includes('base64,') ? atob(payload) : payload;
+      const comma = uri.indexOf(',');
+      const payload = uri.slice(comma + 1);
+      let txt = uri.slice(0, comma).includes('base64') ? atob(payload) : payload;
       if (!txt.trim().startsWith('{')) { try { txt = decodeURIComponent(txt); } catch(e) {} }
       meta = JSON.parse(txt);
     }
@@ -280,8 +281,8 @@ async function loadToken(rpc, addr, tid, is1155, displayOnly) {
     if (!img) throw new Error('no image in metadata');
     if (displayOnly) {
       // this IS already binary art — show it as-is
-      const payload = img.slice(img.indexOf(',') + 1);
-      outSVG = img.includes('base64,') ? atob(payload) : payload;
+      const icomma = img.indexOf(',');
+      outSVG = img.slice(0, icomma).includes('base64') ? atob(img.slice(icomma + 1)) : img.slice(icomma + 1);
       $('stage').innerHTML = outSVG;
       $('dlsvg').disabled = $('dlpng').disabled = false;
       $('mint').disabled = true;
@@ -304,8 +305,9 @@ $('loadnft').onclick = async () => {
     let uri = decStr(await ethCall(rpc, addr, data));
     let meta;
     if (uri.startsWith('data:')) {
-      const payload = uri.slice(uri.indexOf(',') + 1);
-      let txt = uri.includes('base64,') ? atob(payload) : payload;
+      const comma = uri.indexOf(',');
+      const payload = uri.slice(comma + 1);
+      let txt = uri.slice(0, comma).includes('base64') ? atob(payload) : payload;
       if (!txt.trim().startsWith('{')) { try { txt = decodeURIComponent(txt); } catch(e) {} }
       meta = JSON.parse(txt);
     }
@@ -314,8 +316,8 @@ $('loadnft').onclick = async () => {
     if (!img) throw new Error('no image in metadata');
     if (displayOnly) {
       // this IS already binary art — show it as-is
-      const payload = img.slice(img.indexOf(',') + 1);
-      outSVG = img.includes('base64,') ? atob(payload) : payload;
+      const icomma = img.indexOf(',');
+      outSVG = img.slice(0, icomma).includes('base64') ? atob(img.slice(icomma + 1)) : img.slice(icomma + 1);
       $('stage').innerHTML = outSVG;
       $('dlsvg').disabled = $('dlpng').disabled = false;
       $('mint').disabled = true;
