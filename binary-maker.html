@@ -136,7 +136,7 @@ const MINT_CHAINS = {
   '0x89':  { name: 'Polygon', addr: '', // deploys on the next gas dip
     add: { chainId: '0x89', chainName: 'Polygon', nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
            rpcUrls: ['https://polygon-bor-rpc.publicnode.com'], blockExplorerUrls: ['https://polygonscan.com'] } },
-  '0x2105': { name: 'Base', addr: '',
+  '0x2105': { name: 'Base', addr: '0xCe347180C3A45151C10366Da43fD822289ebB075',
     add: { chainId: '0x2105', chainName: 'Base', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
            rpcUrls: ['https://base-rpc.publicnode.com'], blockExplorerUrls: ['https://basescan.org'] } },
   '0x92':  { name: 'Sonic', addr: '',
@@ -188,7 +188,10 @@ const COLLECTIONS = {
   "22356": [
     { name: "100K WATT Club", addr: "0xf7e47bd99554c14991682c7be937d735da93dfc8", display: true },
   ],
-  "1": [], "8453": [], "42161": [], "146": [],
+  "8453": [
+    { name: "Binary Maker", addr: "0xCe347180C3A45151C10366Da43fD822289ebB075", display: true },
+  ],
+  "1": [], "42161": [], "146": [],
 };
 const $ = id => document.getElementById(id);
 const status = (m, err) => { $('status').innerHTML = err ? `<span class="err">${m}</span>` : m; };
