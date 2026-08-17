@@ -368,13 +368,61 @@ const ipfs=u=>u&&u.startsWith('ipfs://')?u.replace('ipfs://','https://ipfs.io/ip
 function toast(m,cls){const t=$('toast');t.textContent=m;t.className='show '+(cls||'');setTimeout(()=>t.className='',3600);}
 
 let provider, signer, me, readProvider, items=[], view='explore', filter='all', selected=null;
+let wattxExt=false;   // true when connected through the WATTx browser extension (window.wattx)
 
 function getRead(){
   // reads go through the connected wallet if present (avoids HTTPS→HTTP block),
   // else a direct JsonRpcProvider (works when the page is opened over http)
-  if(signer) return provider;
+  if(signer && !wattxExt) return provider;
   if(!readProvider){ try{ readProvider=new ethers.JsonRpcProvider(READ_RPC); }catch{ readProvider=null; } }
   return readProvider;
+}
+
+// ---- WATTx extension as an ethers runner ------------------------------------
+// The WATTx extension signs Qtum-style AAL transactions from its own key
+// (msg.sender = HASH160(pubkey)), which is the ONLY kind of account that can
+// own tokens on the WATTx EVM. Ethereum wallets (Rabby/MetaMask) derive a
+// keccak address from the same key and can never sign for it, so when the
+// extension is installed it takes priority. janus maps the WATTx txid to the
+// EVM tx hash, so receipts come from the ordinary read RPC.
+function makeWattxRunner(){
+  const rp=getRead();
+  const waitFor=async(hash)=>{
+    for(let i=0;i<240;i++){
+      const rc=await rp.getTransactionReceipt(hash).catch(()=>null);
+      if(rc) return rc;
+      await new Promise(s=>setTimeout(s,3000));
+    }
+    throw new Error('Timed out waiting for confirmation of '+hash);
+  };
+  return {
+    provider: rp,
+    getAddress: async()=>me,
+    sendTransaction: async(tx)=>{
+      const value=Number(tx.value||0);            // WATTx EVM msg.value is in satoshis
+      let gasLimit;
+      try{
+        const est=await rp.estimateGas({from:me,to:tx.to,data:tx.data,value:tx.value||0n});
+        gasLimit=Math.min(Math.ceil(Number(est)*1.3), 39000000);
+      }catch{ gasLimit=2500000; }
+      const r=await window.wattx.sendToContract({to:tx.to,data:tx.data,value,gasLimit});
+      const hash='0x'+r.txid;
+      return { hash, wait:()=>waitFor(hash) };
+    },
+  };
+}
+
+async function connectWattx(){
+  try{
+    const acct=await window.wattx.connect();
+    if(!acct) { toast('Open the WATTx Wallet extension and create or import a key first.','err'); return; }
+    me=acct.evm;
+    signer=makeWattxRunner();
+    wattxExt=true;
+    $('connect').textContent='⚡ '+short(me); $('connect').classList.add('on');
+    setNetBadge(true);   // the extension is always on WATTx — no chain switching
+    load();
+  }catch(e){ toast((e.message||'WATTx Wallet connection rejected').slice(0,120),'err'); }
 }
 
 // Try to switch to WATTx. If the wallet doesn't have WATTx (4902), throw a
@@ -402,6 +450,7 @@ function setNetBadge(onWattx){
 // Any write action calls this first — refuses to send on the wrong chain.
 async function requireWattx(){
   if(!signer){ await connect(); if(!signer) return false; }
+  if(wattxExt) return true;   // extension is natively on WATTx — nothing to switch
   let ok=false;
   try{ ok=await ensureWattx(); }
   catch(e){ if(e.notAdded){ $('addModal').classList.add('open'); return false; } }
@@ -464,7 +513,8 @@ $('aGo').onclick=async()=>{
 };
 
 async function connect(){
-  if(!window.ethereum){ toast('Install an EVM wallet (MetaMask or Rabby) to use WATTx.','err'); return; }
+  if(window.wattx) return connectWattx();   // WATTx Wallet extension takes priority over Rabby/MetaMask
+  if(!window.ethereum){ toast('Install the WATTx Wallet extension (or an EVM wallet) to use WATTx.','err'); return; }
   provider=new ethers.BrowserProvider(window.ethereum);
   // connect the account FIRST (wallets require this before switching/adding chains)
   await provider.send('eth_requestAccounts',[]);
@@ -478,7 +528,7 @@ async function connect(){
   else { setNetBadge(false); $('addModal').classList.add('open'); }
   load();
 }
-if(window.ethereum&&window.ethereum.on){ window.ethereum.on('chainChanged',()=>{ if(window.ethereum.chainId) setNetBadge(window.ethereum.chainId===CHAIN.chainId); }); }
+if(window.ethereum&&window.ethereum.on){ window.ethereum.on('chainChanged',()=>{ if(!wattxExt&&window.ethereum.chainId) setNetBadge(window.ethereum.chainId===CHAIN.chainId); }); }
 
 async function load(){
   const p=getRead();
