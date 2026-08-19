@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1satBazaar — ordinals wallet for WATTx, Bitcoin & BSV</title>
+<meta name="description" content="1satBazaar is a self-custody ordinals and UTXO wallet for WATTx, Bitcoin and BSV. One seed phrase, three chains, keys never leave your browser.">
+<meta property="og:title" content="1satBazaar — ordinals wallet">
+<meta property="og:description" content="Ordinals and UTXO wallet for WATTx, Bitcoin and BSV. Self-custody, no telemetry.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a0d18'/><text x='16' y='23' text-anchor='middle' font-size='17' fill='%23ffd400' font-family='monospace' font-weight='bold'>1</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--void:#000004;--ink:#0a0a16;--line:#191926;--gold:#ffd24a;--gold-deep:#8a6a1d;
+    --txt:#d9d9e8;--dim:#7b7b94;--ok:#3ddc84;--electric:#45d7ff;
+    --disp:"Chakra Petch",sans-serif;--mono:"IBM Plex Mono",monospace;--body:"IBM Plex Sans",sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--void);color:var(--txt);font:15px/1.6 var(--body)}
+  a{color:var(--electric);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 70px}
+  header{border-bottom:1px solid var(--line)}
+  .hbar{display:flex;align-items:center;gap:12px;padding:16px 0}
+  .hbar .mark{font:700 19px var(--disp);letter-spacing:.14em}
+  .hbar .mark em{font-style:normal;color:var(--gold)}
+  .hbar nav{margin-left:auto;display:flex;gap:22px;font:600 13px var(--body)}
+  .hbar nav a{color:var(--dim)} .hbar nav a:hover{color:var(--txt)}
+  h1{font:700 clamp(30px,5vw,50px)/1.08 var(--disp);text-transform:uppercase;margin:44px 0 14px}
+  h1 .g{color:var(--gold)}
+  .lede{color:var(--dim);max-width:62ch;font-size:17px}
+  .dl{display:flex;flex-wrap:wrap;gap:12px;margin:30px 0 10px}
+  .btn{display:flex;align-items:center;gap:10px;background:var(--gold);color:#201700;border:0;
+       font:700 13px var(--disp);letter-spacing:.09em;padding:13px 20px;text-transform:uppercase}
+  .btn:hover{background:#ffdd75}
+  .btn.ghost{background:none;border:1px solid var(--gold-deep);color:var(--gold)}
+  .btn.soon{border:1px solid var(--line);color:var(--dim);cursor:default}
+  .note{color:var(--dim);font-size:13px;margin-top:6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin:46px 0}
+  .card{background:var(--ink);border:1px solid var(--line);padding:20px}
+  .card h3{font:700 14px var(--disp);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+  .card p{color:var(--dim);font-size:14px}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+  td.mono{font-family:var(--mono);font-size:13px}
+  h2{font:700 22px var(--disp);text-transform:uppercase;letter-spacing:.06em;margin:44px 0 6px}
+  .steps{counter-reset:s;margin-top:16px}
+  .step{counter-increment:s;position:relative;padding-left:38px;margin-bottom:14px;color:var(--dim);font-size:14.5px}
+  .step:before{content:counter(s);position:absolute;left:0;top:-1px;width:25px;height:25px;border:1px solid var(--gold-deep);
+               color:var(--gold);font:700 12px var(--mono);display:flex;align-items:center;justify-content:center}
+  .step b{color:var(--txt)}
+  code{font-family:var(--mono);font-size:13px;background:var(--ink);border:1px solid var(--line);padding:1px 6px}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:20px 0;color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="wrap hbar">
+  <div class="mark">⚡ <em>1sat</em>BAZAAR</div>
+  <nav>
+    <a href="index.html">Marketplace</a>
+    <a href="binary-maker.html">Binary Maker</a>
+    <a href="genesis.html">100K Club</a>
+    <a href="https://wattxchange.app" target="_blank" rel="noopener">WATTxchange</a>
+  </nav>
+</div></header>
+
+<div class="wrap">
+  <h1>One seed phrase.<br><span class="g">Three chains.</span></h1>
+  <p class="lede">1satBazaar is a self-custody ordinals and UTXO wallet for <b>WATTx</b>, <b>Bitcoin</b> and <b>Bitcoin SV</b>. Hold coins, view your 1Sat ordinals, inscribe, and connect to WATTx dApps — with keys that are generated and stored only in your own browser.</p>
+
+  <div class="dl">
+    <a class="btn soon" id="chromeBtn">Chrome — in review</a>
+    <a class="btn soon" id="edgeBtn">Edge — in review</a>
+    <a class="btn soon" id="firefoxBtn">Firefox — in review</a>
+    <a class="btn ghost" href="https://github.com/1satbazaar/wallet/releases/latest" target="_blank" rel="noopener">Download .zip</a>
+  </div>
+  <p class="note"><b>Brave users:</b> install from the Chrome Web Store — Brave serves Chrome extensions directly. Until the store listings are approved, use the .zip and load it unpacked (steps below).</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Multi-chain</h3>
+      <p>Switch between WATTx, Bitcoin and BSV from the header. Each chain shows only the address types it actually supports, and reads from its own indexer.</p>
+    </div>
+    <div class="card">
+      <h3>Ordinals</h3>
+      <p>View 1Sat Ordinals and WATTx inscriptions in a built-in gallery, and inscribe on WATTx directly from the wallet.</p>
+    </div>
+    <div class="card">
+      <h3>Collectibles protected</h3>
+      <p>On BSV, ordinals sit in tiny outputs beside ordinary coins. 1satBazaar pins them out of coin selection — and refuses to build a transaction if it can't check.</p>
+    </div>
+    <div class="card">
+      <h3>dApp ready</h3>
+      <p>Provides <code>window.wattx</code> so WATTx dApps — the Marketplace, Binary Maker and the 100K Club — can request signatures. Every transaction needs your approval.</p>
+    </div>
+  </div>
+
+  <h2>Supported chains</h2>
+  <table>
+    <tr><th>Chain</th><th>Address types</th><th>Send</th><th>Ordinals</th></tr>
+    <tr><td>WATTx <span style="color:var(--dim)">(WTX)</span></td><td class="mono">taproot · segwit · legacy · EVM</td><td>Yes</td><td>View + inscribe</td></tr>
+    <tr><td>Bitcoin <span style="color:var(--dim)">(BTC)</span></td><td class="mono">taproot · segwit · legacy</td><td>Yes</td><td>—</td></tr>
+    <tr><td>Bitcoin SV <span style="color:var(--dim)">(BSV)</span></td><td class="mono">legacy</td><td>Yes</td><td>View 1Sat</td></tr>
+  </table>
+
+  <h2>Install from .zip</h2>
+  <div class="steps">
+    <div class="step">Download and unzip <b>1satbazaar-chromium-*.zip</b> (or the Firefox build).</div>
+    <div class="step">Open <code>brave://extensions</code>, <code>chrome://extensions</code> or <code>edge://extensions</code> and turn on <b>Developer mode</b>.</div>
+    <div class="step">Click <b>Load unpacked</b> and select the unzipped folder. On Firefox, use <code>about:debugging</code> → <b>Load Temporary Add-on</b>.</div>
+    <div class="step">Open the wallet, <b>create or import</b> a seed phrase, and write the 12 words down offline.</div>
+  </div>
+
+  <h2>Self-custody, no telemetry</h2>
+  <p class="lede" style="margin-top:8px">Keys are generated in your browser and stored in extension storage. There is no account, no server holding your coins, and no analytics of any kind. The wallet talks only to public blockchain indexers to read balances and broadcast the transactions you approve. <a href="wallet-privacy.html">Privacy policy →</a></p>
+</div>
+
+<footer><div class="wrap">
+  1satBazaar is open source under the MIT licence · <a href="https://github.com/1satbazaar/wallet" target="_blank" rel="noopener">github.com/1satbazaar</a><br>
+  Interface follows the layout language of the MIT-licensed UniSat Wallet. Not affiliated with UniSat.
+</div></footer>
+</body>
+</html>

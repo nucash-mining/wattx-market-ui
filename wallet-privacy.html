@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1satBazaar — Privacy Policy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a0d18'/><text x='16' y='23' text-anchor='middle' font-size='17' fill='%23ffd400' font-family='monospace' font-weight='bold'>1</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--void:#000004;--ink:#0a0a16;--line:#191926;--gold:#ffd24a;--txt:#d9d9e8;--dim:#7b7b94;--electric:#45d7ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--void);color:var(--txt);font:15px/1.7 "IBM Plex Sans",sans-serif}
+  a{color:var(--electric);text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 24px 70px}
+  h1{font:700 34px "Chakra Petch",sans-serif;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+  h2{font:700 17px "Chakra Petch",sans-serif;text-transform:uppercase;letter-spacing:.06em;margin:32px 0 8px}
+  p,li{color:var(--dim)} li{margin-bottom:6px}
+  ul{padding-left:20px;margin-top:8px}
+  b{color:var(--txt)}
+  .date{color:var(--dim);font-size:13px;margin-bottom:26px}
+</style>
+</head>
+<body><div class="wrap">
+<h1>Privacy Policy</h1>
+<div class="date">1satBazaar browser extension · last updated 19 August 2026</div>
+
+<p><b>1satBazaar does not collect, store, transmit or sell any personal information.</b> There is no account to create, no server that holds your funds, and no analytics, tracking or telemetry of any kind in the extension.</p>
+
+<h2>What stays on your device</h2>
+<p>Your private keys and seed phrase are generated in your browser and saved only in your browser's extension storage, along with your account names and which chain you last selected. None of it is ever transmitted. Anyone with access to your device or your seed phrase controls your funds — that is the nature of a self-custody wallet, and why the extension asks you to write the recovery phrase down offline.</p>
+
+<h2>Network requests the extension makes</h2>
+<p>To show balances and broadcast the transactions you approve, the extension contacts public blockchain indexers. These services necessarily see your wallet addresses and your IP address, as any blockchain query does:</p>
+<ul>
+  <li><b>ord-api.wattxchange.app</b> and <b>rpc-wtx.wattxchange.app</b> — WATTx balances, UTXOs, inscriptions and broadcast</li>
+  <li><b>mempool.space</b> — Bitcoin balances, UTXOs, fee estimates and broadcast</li>
+  <li><b>api.whatsonchain.com</b> — Bitcoin SV balances, UTXOs and broadcast</li>
+  <li><b>ordinals.gorillapool.io</b> — the 1Sat ordinals index, used to display inscriptions and to keep collectibles out of coin selection</li>
+</ul>
+<p>No identifying information beyond the address being queried is sent, and requests are made only when the wallet is open or when you approve a transaction.</p>
+
+<h2>Web pages</h2>
+<p>The extension injects a provider script so websites can request a connection to your wallet. A site can see nothing until you approve it, and every transaction opens an approval window that you must confirm. No browsing history is recorded or transmitted.</p>
+
+<h2>Permissions</h2>
+<p><b>storage</b> keeps your encrypted keys and preferences locally. <b>Host permissions</b> cover exactly the indexers listed above. <b>Content scripts</b> provide the dApp connection described above.</p>
+
+<h2>Children</h2>
+<p>1satBazaar is not directed at children under 13 and collects no data from anyone.</p>
+
+<h2>Changes and contact</h2>
+<p>Material changes to this policy will be published on this page with a new date. Questions or reports: <a href="https://github.com/1satbazaar/wallet/issues">github.com/1satbazaar/wallet/issues</a>.</p>
+</div></body>
+</html>
