@@ -153,21 +153,34 @@ const MINT_CHAINS = {
   '0x5754': { name: 'WATTx', addr: '0xdd85baeD099382b3A7084aF12dEe7f3e945b1223', wattx: true,
     add: { chainId: '0x5754', chainName: 'WATTxchain', nativeCurrency: { name: 'WATTx', symbol: 'WTX', decimals: 18 },
            rpcUrls: ['https://rpc-wtx.wattxchange.app'], blockExplorerUrls: ['https://wtx-exp.wattxchange.app'] } },
+  // UTXO chains — "minting" is an ordinal inscription through 1satBazaar, not
+  // an ERC-721 call. `ord: true` marks them so the mint path branches.
+  'ord:wtx':  { name: 'WATTx (ordinal)', ord: true, chain: 'wtx',  addr: 'ord' },
+  'ord:btc':  { name: 'Bitcoin',         ord: true, chain: 'btc',  addr: 'ord' },
+  'ord:ltc':  { name: 'Litecoin',        ord: true, chain: 'ltc',  addr: 'ord' },
+  'ord:bsv':  { name: 'Bitcoin SV',      ord: true, chain: 'bsv',  addr: '' },
+  'ord:bitn': { name: 'Bitnet',          ord: true, chain: 'bitn', addr: '' },
   '0xa4b1': { name: 'Arbitrum', addr: '',
     add: { chainId: '0xa4b1', chainName: 'Arbitrum One', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
            rpcUrls: ['https://arbitrum-one-rpc.publicnode.com'], blockExplorerUrls: ['https://arbiscan.io'] } },
 };
-let walletChain = null, mintOverride = null; // override only when the user picks a chain by hand
+let walletChain = null, mintOverride = null, bazaar = null; // bazaar = 1satBazaar account
 // The mint follows the CONNECTED chain. The picker mirrors the wallet and only
 // overrides it when the user explicitly chooses a different chain.
 function deployedChains() {
-  return Object.entries(MINT_CHAINS).filter(([id, c]) =>
-    c.addr || (c.wattx && window.wattx));  // WATTx shows whenever its extension is installed
+  return Object.entries(MINT_CHAINS).filter(([id, c]) => {
+    if (c.ord) return !!window.wattx;      // ordinal targets need 1satBazaar installed
+    return c.addr || (c.wattx && window.wattx);
+  });
 }
 function fillMintChains() {
   const sel = $('mintchain');
-  const opts = deployedChains().map(([id, c]) =>
-    `<option value="${id}">${c.name}${!c.addr ? ' — deploy pending' : c.wattx ? ' — Wallet extension' : id === walletChain ? ' — connected' : ''}</option>`).join('');
+  const ev = deployedChains().filter(([, c]) => !c.ord).map(([id, c]) =>
+    `<option value="${id}">${c.name}${!c.addr ? ' — deploy pending' : c.wattx ? ' — 1satBazaar' : id === walletChain ? ' — connected' : ''}</option>`).join('');
+  const ord = deployedChains().filter(([, c]) => c.ord).map(([id, c]) =>
+    `<option value="${id}">${c.name}${c.addr ? '' : ' — not supported yet'}</option>`).join('');
+  const opts = (ev ? `<optgroup label="Mint an NFT (contract)">${ev}</optgroup>` : '')
+             + (ord ? `<optgroup label="Inscribe an ordinal (1satBazaar)">${ord}</optgroup>` : '');
   // never assume a chain: with no wallet (or one on an undeployed network) the
   // picker holds a placeholder instead of silently defaulting to Altcoinchain
   const placeholder = !walletChain ? '<option value="">follows your connected wallet</option>'
@@ -182,13 +195,19 @@ function mintTarget() {
   const id = $('mintchain').value;
   const c = MINT_CHAINS[id];
   if (!c || !c.addr) return null;
-  return { id, ...c, switchNeeded: !c.wattx && walletChain !== id };
+  return { id, ...c, switchNeeded: !c.wattx && !c.ord && walletChain !== id };
 }
+// Which wallet does this target need? EVM chains use Rabby/MetaMask; WATTx and
+// every UTXO chain use the 1satBazaar extension, which is the only thing that
+// can sign for them.
+function needsBazaar(c) { return !!(c && (c.wattx || c.ord)); }
 function updateMintBtn() {
   const tgt = mintTarget();
   const sel = MINT_CHAINS[$('mintchain').value];
   $('mint').textContent =
-    tgt ? 'Mint on ' + tgt.name + (tgt.wattx ? ' (Wallet extension)' : tgt.switchNeeded && walletChain ? ' (switches wallet)' : '')
+    tgt && tgt.ord ? 'Inscribe on ' + tgt.name + ' (1satBazaar)'
+    : tgt ? 'Mint on ' + tgt.name + (tgt.wattx ? ' (1satBazaar)' : tgt.switchNeeded && walletChain ? ' (switches wallet)' : '')
+    : sel && sel.ord ? 'Inscribe on ' + sel.name + ' — not supported yet'
     : sel && sel.wattx ? 'Mint on WATTx — deploy pending'
     : walletChain ? 'Mint on chain — no deployment on this network'
     : 'Mint on chain';
@@ -295,6 +314,21 @@ function decStr(hex) {
   return decodeURIComponent(escape(s)); // utf8
 }
 $('connect').onclick = async () => {
+  // The browse-your-NFTs chain picker decides which wallet to talk to: WATTx and
+  // the UTXO chains can only be signed by 1satBazaar, never by Rabby/MetaMask.
+  const cid = $('chain').selectedOptions[0].dataset.chain;
+  const bazaarChains = { '22356': 'wtx', '0': 'btc' };
+  if (cid === '22356') {
+    if (!window.wattx) { status('WATTx needs the 1satBazaar extension — nft.wattxchange.app/wallet.html', 1); return; }
+    const acct = await window.wattx.connect();
+    if (!acct) { status('open 1satBazaar and create or import a key first', 1); return; }
+    wallet = acct.evm; bazaar = acct;
+    walletChain = '0x5754';
+    fillMintChains();
+    $('connect').textContent = '⚡ ' + wallet.slice(0, 6) + '…' + wallet.slice(-4);
+    fillColls(); listMine();
+    return;
+  }
   if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
   const acc = await window.ethereum.request({ method: 'eth_requestAccounts' });
   wallet = acc[0];
@@ -639,6 +673,21 @@ fillColls();
 $('mintchain').onchange = () => { mintOverride = $('mintchain').value || null; updateMintBtn(); };
 fillMintChains();
 
+// Ordinal chains: the artwork itself is inscribed through 1satBazaar. The SVG
+// goes on-chain as the inscription content, so the piece IS the ordinal.
+async function inscribeViaBazaar(tgt) {
+  if (!window.wattx) {
+    status('inscribing needs the 1satBazaar extension — nft.wattxchange.app/wallet.html', 1);
+    return;
+  }
+  const acct = await window.wattx.connect();
+  if (!acct) { status('open 1satBazaar and create or import a key first', 1); return; }
+  const b64 = btoa(unescape(encodeURIComponent(outSVG)));
+  status(`confirm the inscription in 1satBazaar (${(outSVG.length / 1024).toFixed(0)}KB on ${tgt.name})…`);
+  const r = await window.wattx.inscribe({ contentType: 'image/svg+xml', dataBase64: b64, chain: tgt.chain });
+  status(`✓ inscribed on ${tgt.name} — ${String(r.inscriptionId || '').slice(0, 22)}…`);
+}
+
 // WATTx mints ride the WATTx Wallet extension: it signs through the node
 // wallet (janus re-signs; browser EVM wallets physically cannot sign here).
 async function mintViaWattx(tgt, name) {
@@ -666,11 +715,19 @@ $('mint').onclick = async () => {
   try {
     if (!outCells) { status('make it binary first', 1); return; }
     const name = ($('pname').value || '').replace(/["\\\x00-\x1f]/g, '').slice(0, 64);
-    if (!window.ethereum && !MINT_CHAINS[$('mintchain').value]?.wattx) {
+    const selNow = MINT_CHAINS[$('mintchain').value];
+    if (!window.ethereum && !selNow?.wattx && !selNow?.ord) {
       status('no wallet found — install Rabby/MetaMask', 1); return;
     }
     const tgt = mintTarget();
-    if (!tgt) { status('no BinaryArt deployment on this network yet — pick a supported chain in the selector', 1); return; }
+    if (!tgt) {
+      const sel = MINT_CHAINS[$('mintchain').value];
+      status(sel && sel.ord
+        ? `${sel.name} ordinals are not supported by the wallet yet`
+        : 'no BinaryArt deployment on this network yet — pick a supported chain in the selector', 1);
+      return;
+    }
+    if (tgt.ord) return inscribeViaBazaar(tgt);
     if (tgt.wattx) return mintViaWattx(tgt, name);
     if (walletChain !== tgt.id) {
       status('switching wallet to ' + tgt.name + '…');
