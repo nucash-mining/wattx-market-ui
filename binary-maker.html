@@ -149,7 +149,7 @@ const MINT_CHAINS = {
   // WATTx: browser wallets can't sign WATTx EVM transactions — only the WATTx
   // Wallet extension can (window.wattx.sendToContract via the node). Its hash160
   // accounts are also the only ones that can own WATTx EVM tokens.
-  '0x5754': { name: 'WATTx', addr: '', wattx: true,
+  '0x5754': { name: 'WATTx', addr: '0xdd85baeD099382b3A7084aF12dEe7f3e945b1223', wattx: true,
     add: { chainId: '0x5754', chainName: 'WATTxchain', nativeCurrency: { name: 'WATTx', symbol: 'WTX', decimals: 18 },
            rpcUrls: ['https://rpc-wtx.wattxchange.app'], blockExplorerUrls: ['https://wtx-exp.wattxchange.app'] } },
   '0xa4b1': { name: 'Arbitrum', addr: '',
@@ -210,6 +210,7 @@ const COLLECTIONS = {
     { name: "Mining Game NFT (classic)", addr: "0xf9670e5D46834561813CA79854B3d7147BBbFfb2", erc1155: true, ids: [1,2,3,4,5] },
   ],
   "22356": [
+    { name: "Binary Maker", addr: "0xdd85baeD099382b3A7084aF12dEe7f3e945b1223", display: true },
     { name: "100K WATT Club", addr: "0xf7e47bd99554c14991682c7be937d735da93dfc8", display: true },
   ],
   "8453": [
