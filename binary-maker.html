@@ -128,7 +128,7 @@ const G0 = "M3 3h3v1h-3zM3 4h1v1h-1zM6 4h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM2 6h1v1
 const G1 = "M2 3h4v1h-4zM4 4h2v1h-2zM4 5h2v1h-2zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2zM4 10h2v1h-2zM2 11h6v1h-6z";
 const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]; // 4x4 ordered dither
 
-let srcImg = null, outSVG = null, outCells = null, outCols = 0, outRows = 0, wallet = null;
+let srcImg = null, srcFrames = null, outSVG = null, outCells = null, outFrames = null, outCols = 0, outRows = 0, wallet = null;
 // BinaryArt deployments — the mint button follows the connected chain
 const MINT_CHAINS = {
   '0x91a': { name: 'Altcoinchain', addr: '0x74B7bA6aC6bBEC8d88C71bDBE353A5A724083107',
@@ -143,37 +143,58 @@ const MINT_CHAINS = {
   '0x92':  { name: 'Sonic', addr: '0x42064C6Eb7d609E8cBddCcfddD607CCca887BB94',
     add: { chainId: '0x92', chainName: 'Sonic', nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18 },
            rpcUrls: ['https://rpc.soniclabs.com'], blockExplorerUrls: ['https://sonicscan.org'] } },
-  '0xa':   { name: 'Optimism', addr: '',
+  '0xa':   { name: 'Optimism', addr: '0x42064C6Eb7d609E8cBddCcfddD607CCca887BB94',
     add: { chainId: '0xa', chainName: 'OP Mainnet', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
            rpcUrls: ['https://optimism-rpc.publicnode.com'], blockExplorerUrls: ['https://optimistic.etherscan.io'] } },
+  // WATTx: browser wallets can't sign WATTx EVM transactions — only the WATTx
+  // Wallet extension can (window.wattx.sendToContract via the node). Its hash160
+  // accounts are also the only ones that can own WATTx EVM tokens.
+  '0x5754': { name: 'WATTx', addr: '', wattx: true,
+    add: { chainId: '0x5754', chainName: 'WATTxchain', nativeCurrency: { name: 'WATTx', symbol: 'WTX', decimals: 18 },
+           rpcUrls: ['https://rpc-wtx.wattxchange.app'], blockExplorerUrls: ['https://wtx-exp.wattxchange.app'] } },
   '0xa4b1': { name: 'Arbitrum', addr: '',
     add: { chainId: '0xa4b1', chainName: 'Arbitrum One', nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
            rpcUrls: ['https://arbitrum-one-rpc.publicnode.com'], blockExplorerUrls: ['https://arbiscan.io'] } },
 };
-let walletChain = null;
-// mint on ANY chain with a deployment: the picker lists every live deployment
-// and auto-follows the wallet whenever the connected chain is one of them
-function deployedChains() { return Object.entries(MINT_CHAINS).filter(([,c]) => c.addr); }
+let walletChain = null, mintOverride = null; // override only when the user picks a chain by hand
+// The mint follows the CONNECTED chain. The picker mirrors the wallet and only
+// overrides it when the user explicitly chooses a different chain.
+function deployedChains() {
+  return Object.entries(MINT_CHAINS).filter(([id, c]) =>
+    c.addr || (c.wattx && window.wattx));  // WATTx shows whenever its extension is installed
+}
 function fillMintChains() {
-  const sel = $('mintchain'), prev = sel.value;
-  sel.innerHTML = deployedChains().map(([id, c]) =>
-    `<option value="${id}">${c.name}${id === walletChain ? ' — connected' : ''}</option>`).join('');
-  if (MINT_CHAINS[walletChain]?.addr) sel.value = walletChain;
-  else if (prev && MINT_CHAINS[prev]?.addr) sel.value = prev;
+  const sel = $('mintchain');
+  const opts = deployedChains().map(([id, c]) =>
+    `<option value="${id}">${c.name}${!c.addr ? ' — deploy pending' : c.wattx ? ' — Wallet extension' : id === walletChain ? ' — connected' : ''}</option>`).join('');
+  // never assume a chain: with no wallet (or one on an undeployed network) the
+  // picker holds a placeholder instead of silently defaulting to Altcoinchain
+  const placeholder = !walletChain ? '<option value="">follows your connected wallet</option>'
+    : !MINT_CHAINS[walletChain]?.addr ? '<option value="">connected chain — no deployment</option>' : '';
+  sel.innerHTML = placeholder + opts;
+  if (mintOverride && MINT_CHAINS[mintOverride]?.addr) sel.value = mintOverride;
+  else if (MINT_CHAINS[walletChain]?.addr) sel.value = walletChain;
+  else sel.value = '';
   updateMintBtn();
 }
 function mintTarget() {
   const id = $('mintchain').value;
   const c = MINT_CHAINS[id];
-  return c && c.addr ? { id, ...c, switchNeeded: walletChain !== id } : null;
+  if (!c || !c.addr) return null;
+  return { id, ...c, switchNeeded: !c.wattx && walletChain !== id };
 }
 function updateMintBtn() {
   const tgt = mintTarget();
-  $('mint').textContent = tgt ? 'Mint on ' + tgt.name + (tgt.switchNeeded && walletChain ? ' (switches wallet)' : '') : 'Mint';
+  const sel = MINT_CHAINS[$('mintchain').value];
+  $('mint').textContent =
+    tgt ? 'Mint on ' + tgt.name + (tgt.wattx ? ' (Wallet extension)' : tgt.switchNeeded && walletChain ? ' (switches wallet)' : '')
+    : sel && sel.wattx ? 'Mint on WATTx — deploy pending'
+    : walletChain ? 'Mint on chain — no deployment on this network'
+    : 'Mint on chain';
 }
 if (window.ethereum) {
   window.ethereum.request({ method: 'eth_chainId' }).then(c => { walletChain = c.toLowerCase(); fillMintChains(); }).catch(()=>{});
-  window.ethereum.on?.('chainChanged', c => { walletChain = c.toLowerCase(); fillMintChains(); });
+  window.ethereum.on?.('chainChanged', c => { walletChain = c.toLowerCase(); mintOverride = null; fillMintChains(); });
 }
 
 // known collections per chain — your tokens are listed automatically
@@ -194,7 +215,13 @@ const COLLECTIONS = {
   "8453": [
     { name: "Binary Maker", addr: "0xCe347180C3A45151C10366Da43fD822289ebB075", display: true },
   ],
-  "1": [], "42161": [], "146": [],
+  "10": [
+    { name: "Binary Maker", addr: "0x42064C6Eb7d609E8cBddCcfddD607CCca887BB94", display: true },
+  ],
+  "146": [
+    { name: "Binary Maker", addr: "0x42064C6Eb7d609E8cBddCcfddD607CCca887BB94", display: true },
+  ],
+  "1": [], "42161": [],
 };
 const $ = id => document.getElementById(id);
 const status = (m, err) => { $('status').innerHTML = err ? `<span class="err">${m}</span>` : m; };
@@ -207,9 +234,48 @@ $('drop').ondrop = e => { e.preventDefault(); $('drop').classList.remove('on'); 
 $('file').onchange = e => loadFile(e.target.files[0]);
 function loadFile(f) {
   if (!f) return;
+  if (f.type === 'image/gif' && 'ImageDecoder' in window) {
+    f.arrayBuffer().then(decodeGif).then(frames => {
+      if (frames && frames.length > 1) {
+        srcFrames = frames; srcImg = frames[0].img;
+        status(`loaded ${f.name} — animated GIF, ${frames.length} frames`); make();
+      } else loadStatic(f);
+    }).catch(() => loadStatic(f));
+    return;
+  }
+  loadStatic(f);
+}
+function loadStatic(f) {
   const img = new Image();
-  img.onload = () => { srcImg = img; status(`loaded ${f.name} (${img.width}×${img.height})`); make(); };
+  img.onload = () => { srcFrames = null; srcImg = img; status(`loaded ${f.name} (${img.width}×${img.height})`); make(); };
   img.src = URL.createObjectURL(f);
+}
+// decode every frame of a GIF (Chromium ImageDecoder — in Brave/Chrome/Edge)
+async function decodeGif(buf) {
+  const dec = new ImageDecoder({ data: buf, type: 'image/gif' });
+  await dec.tracks.ready;
+  const count = dec.tracks.selectedTrack.frameCount;
+  const frames = [];
+  for (let i = 0; i < Math.min(count, 96); i++) {
+    const { image } = await dec.decode({ frameIndex: i });
+    const cv = document.createElement('canvas');
+    cv.width = image.displayWidth; cv.height = image.displayHeight;
+    cv.getContext('2d').drawImage(image, 0, 0);
+    frames.push({ img: cv, delayCs: Math.min(100, Math.max(2, Math.round((image.duration || 90000) / 10000))) });
+    image.close();
+  }
+  dec.close();
+  return frames;
+}
+// NFT images: if the metadata points at a GIF, try to fetch + decode its frames
+async function maybeAnimated(url) {
+  try {
+    if (!('ImageDecoder' in window)) return null;
+    if (!(url.startsWith('data:image/gif') || /\.gif($|[?#])/i.test(url))) return null;
+    const blob = await (await fetch(url.startsWith('data:') ? url : ipfs(url))).blob();
+    const frames = await decodeGif(await blob.arrayBuffer());
+    return frames && frames.length > 1 ? frames : null;
+  } catch (e) { return null; }
 }
 
 const ipfs = u => u.replace(/^ipfs:\/\//, 'https://ipfs.io/ipfs/');
@@ -324,9 +390,11 @@ async function loadToken(rpc, addr, tid, is1155, displayOnly) {
       return;
     }
     status('loading image…');
+    const anim = await maybeAnimated(img);
+    if (anim) { srcFrames = anim; srcImg = anim[0].img; status(`loaded ${meta.name || 'NFT'} — animated, ${anim.length} frames`); make(); return; }
     const el = new Image();
     el.crossOrigin = 'anonymous';
-    el.onload = () => { srcImg = el; status(`loaded ${meta.name || 'NFT'}`); make(); };
+    el.onload = () => { srcFrames = null; srcImg = el; status(`loaded ${meta.name || 'NFT'}`); make(); };
     el.onerror = () => status('image blocked cross-origin — save it and upload instead', 1);
     el.src = img.startsWith('data:') ? img : ipfs(img);
   } catch(e) { status('load failed: ' + e.message, 1); }
@@ -349,9 +417,11 @@ $('loadnft').onclick = async () => {
     let img = meta.image || meta.image_url;
     if (!img) throw new Error('no image in metadata');
     status('loading image…');
+    const anim = await maybeAnimated(img);
+    if (anim) { srcFrames = anim; srcImg = anim[0].img; status(`loaded animated NFT — ${anim.length} frames`); make(); return; }
     const el = new Image();
     el.crossOrigin = 'anonymous';
-    el.onload = () => { srcImg = el; status(`loaded ${meta.name || 'NFT'} (${el.width}×${el.height})`); make(); };
+    el.onload = () => { srcFrames = null; srcImg = el; status(`loaded ${meta.name || 'NFT'} (${el.width}×${el.height})`); make(); };
     el.onerror = () => status('image blocked cross-origin — save it and upload instead', 1);
     el.src = img.startsWith('data:') ? img : ipfs(img);
   } catch(e) { status('load failed: ' + e.message, 1); }
@@ -362,6 +432,34 @@ $('cols').oninput = () => $('colsv').textContent = $('cols').value;
 $('boost').oninput = () => $('boostv').textContent = ($('boost').value/10).toFixed(1);
 $('make').onclick = () => make();
 
+// one source frame -> binary cells (+ the <use> markup for the SVG)
+function cellsFor(img, cols, rows, boost, inv) {
+  const cv = document.createElement('canvas');
+  cv.width = cols; cv.height = rows;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0, cols, rows);
+  const px = cx.getImageData(0, 0, cols, rows).data; // throws if tainted
+  const cells = new Uint8Array(cols * rows * 4).fill(0xff);
+  let uses = '', n = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = (r*cols + c) * 4;
+      let R = px[i], Gc = px[i+1], B = px[i+2];
+      const A = px[i+3];
+      if (A < 24) continue;                     // transparent stays void
+      R = Math.min(255, R*boost); Gc = Math.min(255, Gc*boost); B = Math.min(255, B*boost);
+      const lum = (0.2126*R + 0.7152*Gc + 0.0722*B) / 255;
+      if (lum < 0.02) continue;                  // true black stays void
+      let bit = lum * 15 > BAYER[r % 4][c % 4] ? 1 : 0;  // ordered dither: bright=1
+      if (inv) bit = 1 - bit;
+      const hex = '#' + [R,Gc,B].map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
+      uses += `<use href="#g${bit}" x="${c*8}" y="${r*14}" fill="${hex}"/>`;
+      cells[i] = Math.round(R); cells[i+1] = Math.round(Gc); cells[i+2] = Math.round(B); cells[i+3] = bit;
+      n++;
+    }
+  }
+  return { cells, uses, n };
+}
 function make() {
   if (!srcImg) { status('load an image first', 1); return; }
   let cols = +$('cols').value;
@@ -374,34 +472,17 @@ function make() {
     rows = Math.max(8, Math.round(srcImg.height / srcImg.width * cols * 8 / 14));
   }
   if (+$('cols').value !== cols) { $('cols').value = cols; $('colsv').textContent = cols + ' (auto-fit for minting)'; }
-  const cv = document.createElement('canvas');
-  cv.width = cols; cv.height = rows;
-  const cx = cv.getContext('2d', { willReadFrequently: true });
-  cx.drawImage(srcImg, 0, 0, cols, rows);
-  let px;
-  try { px = cx.getImageData(0, 0, cols, rows).data; }
-  catch(e) { status('image is cross-origin tainted — save it locally and upload instead', 1); return; }
-
   const W = cols*8, H = rows*14;
-  const cells = new Uint8Array(cols * rows * 4).fill(0xff);
-  let uses = '';
-  let n = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const i = (r*cols + c) * 4;
-      let R = px[i], Gc = px[i+1], B = px[i+2], A = px[i+3];
-      if (A < 24) continue;                     // transparent stays void
-      R = Math.min(255, R*boost); Gc = Math.min(255, Gc*boost); B = Math.min(255, B*boost);
-      const lum = (0.2126*R + 0.7152*Gc + 0.0722*B) / 255;
-      if (lum < 0.02) continue;                  // true black stays void
-      let bit = lum * 15 > BAYER[r % 4][c % 4] ? 1 : 0;  // ordered dither: bright=1
-      if (inv) bit = 1 - bit;
-      const hex = '#' + [R,Gc,B].map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
-      uses += `<use href="#g${bit}" x="${c*8}" y="${r*14}" fill="${hex}"/>`;
-      const ci = (r*cols + c) * 4;
-      cells[ci] = Math.round(R); cells[ci+1] = Math.round(Gc); cells[ci+2] = Math.round(B); cells[ci+3] = bit;
-      n++;
-    }
+  let first;
+  try { first = cellsFor(srcImg, cols, rows, boost, inv); }
+  catch(e) { status('image is cross-origin tainted — save it locally and upload instead', 1); return; }
+  const { cells, uses, n } = first;
+  // an animated source becomes an animated binary: every frame gets its own cells
+  outFrames = null;
+  if (srcFrames && srcFrames.length > 1) {
+    try {
+      outFrames = srcFrames.map(f => ({ cells: cellsFor(f.img, cols, rows, boost, inv).cells, delayCs: f.delayCs }));
+    } catch(e) { outFrames = null; }
   }
   outSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">` +
     `<rect width="${W}" height="${H}" fill="#000004"/>` +
@@ -410,7 +491,9 @@ function make() {
   outCells = cells; outCols = cols; outRows = rows;
   $('dlsvg').disabled = $('dlpng').disabled = $('dlgif').disabled = false;
   $('mint').disabled = false;
-  status(`${n.toLocaleString()} digits · ${cols}×${rows} grid · ${(outSVG.length/1024).toFixed(0)}KB SVG — ready to mint`);
+  status(`${n.toLocaleString()} digits · ${cols}×${rows} grid`
+    + (outFrames ? ` · ${outFrames.length} animated frames` : '')
+    + ` · ${(outSVG.length/1024).toFixed(0)}KB SVG — ready to mint`);
 }
 
 // ---- export ----
@@ -431,28 +514,33 @@ $('dlpng').onclick = () => {
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(outSVG)));
 };
 
-// ---- animated GIF export: the digits shimmer — cells flicker 0↔1 forever ----
-const FRAMES = 12, DELAY_CS = 9; // 12 frames · 90ms ≈ 1.1s loop
+// ---- animated GIF export ----
+// An animated source (uploaded GIF / animated NFT) is replayed frame-for-frame
+// in binary. A still image gets the shimmer instead: digits flicker 0<->1.
+const SHIMMER_FRAMES = 12, SHIMMER_DELAY_CS = 9; // 12 frames · 90ms ≈ 1.1s loop
+function gifFrameCount() { return outFrames ? outFrames.length : SHIMMER_FRAMES; }
+function gifDelayCs(frame) { return outFrames ? outFrames[frame].delayCs : SHIMMER_DELAY_CS; }
 function drawGifFrame(ctx, scale, frame) {
   const W = outCols * 8 * scale, H = outRows * 14 * scale;
+  const src = outFrames ? outFrames[frame].cells : outCells;
   ctx.fillStyle = '#000004'; ctx.fillRect(0, 0, W, H);
   const p0 = new Path2D(G0), p1 = new Path2D(G1);
   for (let r = 0; r < outRows; r++) for (let c = 0; c < outCols; c++) {
     const ci = (r * outCols + c) * 4;
-    let bit = outCells[ci + 3];
+    let bit = src[ci + 3];
     if (bit !== 0 && bit !== 1) continue; // void cell
-    // deterministic shimmer: ~8% of digits flip each frame
-    if (((c * 73856093 ^ r * 19349663 ^ frame * 83492791) >>> 0) % 100 < 8) bit = 1 - bit;
+    // still images only: deterministic shimmer, ~8% of digits flip each frame
+    if (!outFrames && ((c * 73856093 ^ r * 19349663 ^ frame * 83492791) >>> 0) % 100 < 8) bit = 1 - bit;
     ctx.save();
     ctx.translate(c * 8 * scale, r * 14 * scale); ctx.scale(scale, scale);
-    ctx.fillStyle = '#' + [outCells[ci], outCells[ci+1], outCells[ci+2]].map(v => v.toString(16).padStart(2,'0')).join('');
+    ctx.fillStyle = '#' + [src[ci], src[ci+1], src[ci+2]].map(v => v.toString(16).padStart(2,'0')).join('');
     ctx.fill(bit ? p1 : p0);
     ctx.restore();
   }
 }
-function buildPalette(px) {
+function buildPalette(samples) {
   const freq = new Map();
-  for (let i = 0; i < px.length; i += 4) {
+  for (const px of samples) for (let i = 0; i < px.length; i += 4) {
     const k = (px[i] & 0xf8) << 16 | (px[i+1] & 0xf8) << 8 | (px[i+2] & 0xf8);
     freq.set(k, (freq.get(k) || 0) + 1);
   }
@@ -499,8 +587,14 @@ $('dlgif').onclick = async () => {
   await new Promise(r => setTimeout(r, 30));
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
-  drawGifFrame(ctx, scale, 0);
-  const { pal, idx } = buildPalette(ctx.getImageData(0, 0, W, H).data);
+  const total = gifFrameCount();
+  // sample up to 4 frames spread across the animation so the palette covers it
+  const samples = [];
+  for (let s = 0; s < Math.min(4, total); s++) {
+    drawGifFrame(ctx, scale, Math.floor(s * total / Math.min(4, total)));
+    samples.push(ctx.getImageData(0, 0, W, H).data);
+  }
+  const { pal, idx } = buildPalette(samples);
   const bytes = [];
   const push = (...b) => bytes.push(...b);
   const u16 = v => push(v & 0xff, v >> 8 & 0xff);
@@ -509,8 +603,8 @@ $('dlgif').onclick = async () => {
   for (const k of pal) push(k >> 16 & 0xff, k >> 8 & 0xff, k & 0xff);
   push(0x21,0xff,0x0b, ...[..."NETSCAPE2.0"].map(c=>c.charCodeAt(0)), 3,1,0,0,0); // loop forever
   const nearCache = new Map();
-  for (let f = 0; f < FRAMES; f++) {
-    status(`encoding GIF frame ${f+1}/${FRAMES}…`);
+  for (let f = 0; f < total; f++) {
+    status(`encoding GIF frame ${f+1}/${total}…`);
     await new Promise(r => setTimeout(r, 0));
     drawGifFrame(ctx, scale, f);
     const px = ctx.getImageData(0, 0, W, H).data;
@@ -524,7 +618,8 @@ $('dlgif').onclick = async () => {
       }
       indices[i] = ix;
     }
-    push(0x21,0xf9,4, 0x04, DELAY_CS & 0xff, DELAY_CS >> 8 & 0xff, 0, 0); // GCE: disposal=1
+    const d = gifDelayCs(f);
+    push(0x21,0xf9,4, 0x04, d & 0xff, d >> 8 & 0xff, 0, 0); // GCE: disposal=1
     push(0x2c); u16(0); u16(0); u16(W); u16(H); push(0);                   // image descriptor
     push(8);                                                                // LZW min code size
     const data = lzwEncode(8, indices);
@@ -536,19 +631,45 @@ $('dlgif').onclick = async () => {
   }
   push(0x3b);
   dl('binary.gif', new Blob([new Uint8Array(bytes)], { type: 'image/gif' }));
-  status(`✓ animated GIF saved — ${FRAMES} frames, ${(bytes.length/1024).toFixed(0)}KB, loops forever`);
+  status(`✓ animated GIF saved — ${total} frames${outFrames ? ' (follows the source animation)' : ' (shimmer)'}, ${(bytes.length/1024).toFixed(0)}KB, loops forever`);
 };
 fillColls();
-$('mintchain').onchange = updateMintBtn;
+$('mintchain').onchange = () => { mintOverride = $('mintchain').value || null; updateMintBtn(); };
 fillMintChains();
+
+// WATTx mints ride the WATTx Wallet extension: it signs through the node
+// wallet (janus re-signs; browser EVM wallets physically cannot sign here).
+async function mintViaWattx(tgt, name) {
+  if (!window.wattx) {
+    status('WATTx minting needs the WATTx Wallet extension — install it, then reload', 1);
+    return;
+  }
+  const acct = await window.wattx.connect();
+  if (!acct) { status('open the WATTx Wallet extension and create or import a key first', 1); return; }
+  const iface = new ethers.Interface(['function mint(uint16 cols, uint16 rows, string name_, bytes cells) returns (uint256)']);
+  const data = iface.encodeFunctionData('mint', [outCols, outRows, name, outCells]);
+  let gasLimit = 20000000;
+  try {
+    const r = await fetch('https://rpc-wtx.wattxchange.app', { method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_estimateGas',params:[{from:acct.evm,to:tgt.addr,data}]}) });
+    const j = await r.json();
+    if (j.result) gasLimit = Math.min(Math.ceil(parseInt(j.result,16)*1.3), 39000000);
+  } catch(e) {}
+  status('confirm the mint in your WATTx Wallet…');
+  const res = await window.wattx.sendToContract({ to: tgt.addr, data, value: 0, gasLimit });
+  status(`✓ minted on WATTx — tx ${(res.txid||'').slice(0,16)}… (confirms in a block or two)`);
+}
 
 $('mint').onclick = async () => {
   try {
     if (!outCells) { status('make it binary first', 1); return; }
-    if (!window.ethereum) { status('no wallet found — install Rabby/MetaMask', 1); return; }
     const name = ($('pname').value || '').replace(/["\\\x00-\x1f]/g, '').slice(0, 64);
+    if (!window.ethereum && !MINT_CHAINS[$('mintchain').value]?.wattx) {
+      status('no wallet found — install Rabby/MetaMask', 1); return;
+    }
     const tgt = mintTarget();
-    if (!tgt) { status('no BinaryArt deployment on the selected chain yet', 1); return; }
+    if (!tgt) { status('no BinaryArt deployment on this network yet — pick a supported chain in the selector', 1); return; }
+    if (tgt.wattx) return mintViaWattx(tgt, name);
     if (walletChain !== tgt.id) {
       status('switching wallet to ' + tgt.name + '…');
       try {
